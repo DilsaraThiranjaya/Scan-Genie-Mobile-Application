@@ -1,71 +1,25 @@
-import { View, Text } from "react-native"
-import React from "react"
-import { Link, Slot } from "expo-router"
-import "./../global.css"
+import { useEffect, useState } from 'react';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { AuthProvider } from '@/context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 
-const RootLayout = () => {
+export default function RootLayout() {
+  useFrameworkReady();
+
   return (
-    <View style={{ flex: 1, width: "100%" }} className="bg-green-400">
-      {/* Outlet - React */}
-      <Slot />
-      {/* / */}
-      {/* /profile */}
-      {/* /user */}
-      <View
-        style={{
-          width: "100%",
-          flexDirection: "row",
-          backgroundColor: "#e74c3c",
-          padding: 50,
-          justifyContent: "space-evenly"
-        }}
-      >
-        <View style={{ backgroundColor: "#000", padding: 10 }}>
-          <Link
-            href={"/"}
-            style={{
-              color: "#fff",
-              padding: 10
-            }}
-          >
-            Home
-          </Link>
-        </View>
-        <View
-          style={{
-            backgroundColor: "#000",
-            padding: 10
-          }}
-        >
-          <Link
-            href={"/profile"}
-            style={{
-              color: "#fff",
-              padding: 10
-            }}
-          >
-            Profile
-          </Link>
-        </View>
-        <View
-          style={{
-            backgroundColor: "#000",
-            padding: 10
-          }}
-        >
-          <Link
-            href={"/user"}
-            style={{
-              color: "#fff",
-              padding: 10
-            }}
-          >
-            User
-          </Link>
-        </View>
-      </View>
-    </View>
-  )
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+      <StatusBar style="auto" />
+      <Toast />
+    </AuthProvider>
+  );
 }
-
-export default RootLayout
