@@ -7,19 +7,18 @@ interface GradientBackgroundProps {
   colors?: readonly [any, any, ...any[]];
 }
 
-export const GradientBackground: React.FC<GradientBackgroundProps> = ({ 
-  children, 
-  colors = ['#667eea', '#764ba2'] as readonly [any, any]
+export const GradientBackground: React.FC<GradientBackgroundProps> = ({
+  children,
+  colors = ["#667eea", "#764ba2"],
 }) => {
   return (
-    <LinearGradient colors={colors} style={styles.gradient}>
+    <div
+      className="flex min-h-screen"
+      style={{
+        background: `linear-gradient(to bottom right, ${colors[0]}, ${colors[1]})`,
+      }}
+    >
       {children}
-    </LinearGradient>
+    </div>
   );
 };
-
-const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
-});

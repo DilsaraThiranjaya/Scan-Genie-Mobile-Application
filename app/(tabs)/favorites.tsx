@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
@@ -13,7 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { FirestoreService } from '@/services/firestore';
 import { UserFavorite } from '@/types';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Heart, Star, Trash2 } from 'lucide-react-native';
+import { Heart, Trash2 } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 
 export default function Favorites() {
@@ -80,10 +79,10 @@ export default function Favorites() {
 
   if (loading) {
     return (
-      <LinearGradient colors={['#f093fb', '#f5576c']} style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.centerContent}>
-            <Text style={styles.loadingText}>Loading favorites...</Text>
+      <LinearGradient colors={['#f093fb', '#f5576c']} className="flex-1">
+        <SafeAreaView className="flex-1">
+          <View className="flex-1 justify-center items-center">
+            <Text className="text-white text-lg">Loading favorites...</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -91,70 +90,70 @@ export default function Favorites() {
   }
 
   return (
-    <LinearGradient colors={['#f093fb', '#f5576c']} style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
+    <LinearGradient colors={['#f093fb', '#f5576c']} className="flex-1">
+      <SafeAreaView className="flex-1">
+        <View className="items-center pt-5 px-5 pb-5">
           <Heart size={32} color="white" fill="white" />
-          <Text style={styles.headerTitle}>My Favorites</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text className="text-3xl font-bold text-white mt-3 mb-1">My Favorites</Text>
+          <Text className="text-base text-white/90">
             {favorites.length} saved {favorites.length === 1 ? 'product' : 'products'}
           </Text>
         </View>
 
         {favorites.length === 0 ? (
-          <View style={styles.emptyContainer}>
+          <View className="flex-1 justify-center items-center px-10 gap-4">
             <Heart size={64} color="rgba(255, 255, 255, 0.5)" />
-            <Text style={styles.emptyTitle}>No favorites yet</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text className="text-2xl font-bold text-white">No favorites yet</Text>
+            <Text className="text-base text-white/80 text-center leading-6">
               Start scanning products to add them to your favorites!
             </Text>
           </View>
         ) : (
           <ScrollView
-            style={styles.scrollView}
+            className="flex-1"
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
           >
-            <View style={styles.content}>
+            <View className="p-5 gap-4">
               {favorites.map((favorite) => (
-                <View key={favorite.id} style={styles.favoriteCard}>
-                  <View style={styles.cardContent}>
+                <View key={favorite.id} className="bg-white rounded-2xl p-4 flex-row items-center justify-between">
+                  <View className="flex-1 flex-row items-center gap-3">
                     {favorite.product.imageUrl && (
                       <Image
                         source={{ uri: favorite.product.imageUrl }}
-                        style={styles.productImage}
+                        className="w-15 h-15 rounded-lg bg-gray-100"
                       />
                     )}
                     
-                    <View style={styles.productInfo}>
-                      <Text style={styles.productName}>
+                    <View className="flex-1 gap-1">
+                      <Text className="text-base font-semibold text-gray-900">
                         {favorite.product.name}
                       </Text>
                       {favorite.product.brand && (
-                        <Text style={styles.productBrand}>
+                        <Text className="text-sm text-gray-600">
                           {favorite.product.brand}
                         </Text>
                       )}
                       {favorite.product.category && (
-                        <Text style={styles.productCategory}>
+                        <Text className="text-xs text-gray-500">
                           {favorite.product.category}
                         </Text>
                       )}
                       
-                      <View style={styles.productMeta}>
+                      <View className="flex-row items-center gap-2 mt-1">
                         {favorite.product.nutritionGrade && (
-                          <View style={[
-                            styles.gradeBadge,
-                            { backgroundColor: getNutritionGradeColor(favorite.product.nutritionGrade) }
-                          ]}>
-                            <Text style={styles.gradeText}>
+                          <View 
+                            className="w-5 h-5 rounded-full items-center justify-center"
+                            style={{ backgroundColor: getNutritionGradeColor(favorite.product.nutritionGrade) }}
+                          >
+                            <Text className="text-white text-xs font-bold">
                               {favorite.product.nutritionGrade.toUpperCase()}
                             </Text>
                           </View>
                         )}
-                        <Text style={styles.addedDate}>
+                        <Text className="text-xs text-gray-500">
                           Added {favorite.addedAt.toDateString()}
                         </Text>
                       </View>
@@ -162,7 +161,7 @@ export default function Favorites() {
                   </View>
 
                   <TouchableOpacity
-                    style={styles.removeButton}
+                    className="p-2"
                     onPress={() => removeFavorite(favorite.id)}
                   >
                     <Trash2 size={20} color="#ef4444" />
@@ -176,125 +175,3 @@ export default function Favorites() {
     </LinearGradient>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: 'white',
-    fontSize: 18,
-  },
-  header: {
-    alignItems: 'center',
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    gap: 16,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-    gap: 16,
-  },
-  favoriteCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cardContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  productImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: '#f3f4f6',
-  },
-  productInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  productName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  productBrand: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  productCategory: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-  productMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-  },
-  gradeBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gradeText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  addedDate: {
-    fontSize: 11,
-    color: '#9ca3af',
-  },
-  removeButton: {
-    padding: 8,
-  },
-});

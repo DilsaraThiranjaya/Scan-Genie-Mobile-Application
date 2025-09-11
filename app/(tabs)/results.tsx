@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
@@ -14,12 +13,13 @@ import { useAuth } from '@/context/AuthContext';
 import { FirestoreService } from '@/services/firestore';
 import { Product } from '@/types';
 import { Heart, ArrowRight, Info, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle } from 'lucide-react-native';
+import { Sparkles } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Toast from 'react-native-toast-message';
 
 export default function Results() {
-  const { productData } = useLocalSearchParams();
+  const { productData, aiIdentified, originalImage } = useLocalSearchParams();
   const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -44,7 +44,6 @@ export default function Results() {
 
     try {
       if (isFavorite) {
-        // Note: In a real implementation, you'd need to store the favorite ID to delete it
         Toast.show({
           type: 'info',
           text1: 'Removed from favorites',
@@ -97,35 +96,51 @@ export default function Results() {
 
   if (!product) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.errorText}>No product data available</Text>
-      </SafeAreaView>
+      <LinearGradient colors={['#667eea', '#764ba2']} className="flex-1">
+        <SafeAreaView className="flex-1">
+          <View className="flex-1 justify-center items-center">
+            <Text className="text-white text-lg">No product data available</Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
   const GradeIcon = getNutritionGradeIcon(product.nutritionGrade);
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <View style={styles.content}>
-            <View style={styles.productCard}>
-              {product.imageUrl && (
-                <Image source={{ uri: product.imageUrl }} style={styles.productImage} />
+    <LinearGradient colors={['#667eea', '#764ba2']} className="flex-1">
+      <SafeAreaView className="flex-1">
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <View className="p-5 gap-4">
+            <View className="bg-white rounded-2xl overflow-hidden">
+              {(originalImage || product.imageUrl) && (
+                <View className="relative">
+                  <Image 
+                    source={{ uri: originalImage as string || product.imageUrl }} 
+                    className="w-full h-48"
+                    resizeMode="cover"
+                  />
+                  {aiIdentified === 'true' && (
+                    <View className="absolute top-3 right-3 bg-blue-600/90 flex-row items-center px-2 py-1 rounded-xl gap-1">
+                      <Sparkles size={16} color="white" />
+                      <Text className="text-white text-xs font-semibold">AI Identified</Text>
+                    </View>
+                  )}
+                </View>
               )}
               
-              <View style={styles.productInfo}>
-                <View style={styles.productHeader}>
-                  <View style={styles.productTitleContainer}>
-                    <Text style={styles.productName}>{product.name}</Text>
+              <View className="p-4">
+                <View className="flex-row justify-between items-start mb-2">
+                  <View className="flex-1 mr-3">
+                    <Text className="text-xl font-bold text-gray-900 mb-1">{product.name}</Text>
                     {product.brand && (
-                      <Text style={styles.productBrand}>{product.brand}</Text>
+                      <Text className="text-base text-gray-600">{product.brand}</Text>
                     )}
                   </View>
                   
                   <TouchableOpacity
-                    style={styles.favoriteButton}
+                    className="p-2"
                     onPress={toggleFavorite}
                   >
                     <Heart
@@ -137,27 +152,27 @@ export default function Results() {
                 </View>
 
                 {product.category && (
-                  <View style={styles.categoryContainer}>
-                    <Text style={styles.categoryText}>{product.category}</Text>
+                  <View className="self-start bg-gray-100 px-3 py-1 rounded-xl">
+                    <Text className="text-xs text-gray-600 font-medium">{product.category}</Text>
                   </View>
                 )}
               </View>
             </View>
 
             {product.nutritionGrade && (
-              <View style={styles.gradeCard}>
-                <View style={styles.gradeHeader}>
+              <View className="bg-white rounded-2xl p-4 flex-row items-center justify-between">
+                <View className="flex-row items-center gap-3">
                   <GradeIcon 
                     size={24} 
                     color={getNutritionGradeColor(product.nutritionGrade)} 
                   />
-                  <Text style={styles.gradeTitle}>Nutrition Score</Text>
+                  <Text className="text-lg font-semibold text-gray-900">Nutrition Score</Text>
                 </View>
-                <View style={[
-                  styles.gradeBadge,
-                  { backgroundColor: getNutritionGradeColor(product.nutritionGrade) }
-                ]}>
-                  <Text style={styles.gradeText}>
+                <View 
+                  className="w-10 h-10 rounded-full items-center justify-center"
+                  style={{ backgroundColor: getNutritionGradeColor(product.nutritionGrade) }}
+                >
+                  <Text className="text-white text-lg font-bold">
                     {product.nutritionGrade.toUpperCase()}
                   </Text>
                 </View>
@@ -165,17 +180,17 @@ export default function Results() {
             )}
 
             {product.nutritionFacts && (
-              <View style={styles.nutritionCard}>
-                <Text style={styles.cardTitle}>Nutrition Facts (per 100g)</Text>
-                <View style={styles.nutritionGrid}>
+              <View className="bg-white rounded-2xl p-4">
+                <Text className="text-lg font-semibold text-gray-900 mb-3">Nutrition Facts (per 100g)</Text>
+                <View className="gap-2">
                   {Object.entries(product.nutritionFacts).map(([key, value]) => {
                     if (!value) return null;
                     return (
-                      <View key={key} style={styles.nutritionItem}>
-                        <Text style={styles.nutritionLabel}>
-                          {key.charAt(0).toUpperCase() + key.slice(1)}
+                      <View key={key} className="flex-row justify-between items-center py-2 border-b border-gray-100">
+                        <Text className="text-sm text-gray-600 capitalize">
+                          {key.replace(/([A-Z])/g, ' $1').trim()}
                         </Text>
-                        <Text style={styles.nutritionValue}>
+                        <Text className="text-sm font-semibold text-gray-900">
                           {typeof value === 'number' ? `${value.toFixed(1)}g` : value}
                         </Text>
                       </View>
@@ -186,32 +201,34 @@ export default function Results() {
             )}
 
             {product.ingredients && product.ingredients.length > 0 && (
-              <View style={styles.ingredientsCard}>
-                <Text style={styles.cardTitle}>Ingredients</Text>
-                <Text style={styles.ingredientsText}>
+              <View className="bg-white rounded-2xl p-4">
+                <Text className="text-lg font-semibold text-gray-900 mb-3">Ingredients</Text>
+                <Text className="text-sm text-gray-700 leading-5">
                   {product.ingredients.join(', ')}
                 </Text>
               </View>
             )}
 
             {product.allergens && product.allergens.length > 0 && (
-              <View style={styles.allergensCard}>
-                <View style={styles.allergensHeader}>
+              <View className="bg-white rounded-2xl p-4">
+                <View className="flex-row items-center gap-2 mb-3">
                   <AlertTriangle size={20} color="#ef4444" />
-                  <Text style={styles.cardTitle}>Allergens</Text>
+                  <Text className="text-lg font-semibold text-gray-900">Allergens</Text>
                 </View>
-                <View style={styles.allergensContainer}>
+                <View className="flex-row flex-wrap gap-2">
                   {product.allergens.map((allergen, index) => (
-                    <View key={index} style={styles.allergenTag}>
-                      <Text style={styles.allergenText}>{allergen}</Text>
+                    <View key={index} className="bg-red-50 border border-red-200 px-3 py-1 rounded-xl">
+                      <Text className="text-xs text-red-600 font-medium">{allergen}</Text>
                     </View>
                   ))}
                 </View>
               </View>
             )}
 
-            <TouchableOpacity style={styles.suggestionsButton}>
-              <Text style={styles.suggestionsButtonText}>View Healthier Alternatives</Text>
+            <TouchableOpacity className="bg-white/20 border border-white/30 rounded-xl p-4 flex-row items-center justify-center gap-2">
+              <Text className="text-white text-base font-semibold">
+                {aiIdentified === 'true' ? 'Find Cheaper AI Alternatives' : 'View Healthier Alternatives'}
+              </Text>
               <ArrowRight size={20} color="white" />
             </TouchableOpacity>
           </View>
@@ -220,189 +237,3 @@ export default function Results() {
     </LinearGradient>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-    gap: 16,
-  },
-  errorText: {
-    color: 'white',
-    fontSize: 18,
-    textAlign: 'center',
-    marginTop: 50,
-  },
-  productCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  productImage: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'cover',
-  },
-  productInfo: {
-    padding: 16,
-  },
-  productHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  productTitleContainer: {
-    flex: 1,
-    marginRight: 12,
-  },
-  productName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  productBrand: {
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  favoriteButton: {
-    padding: 8,
-  },
-  categoryContainer: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  categoryText: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  gradeCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  gradeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  gradeTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  gradeBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gradeText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  nutritionCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 12,
-  },
-  nutritionGrid: {
-    gap: 8,
-  },
-  nutritionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  nutritionLabel: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  nutritionValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  ingredientsCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-  },
-  ingredientsText: {
-    fontSize: 14,
-    color: '#4b5563',
-    lineHeight: 20,
-  },
-  allergensCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-  },
-  allergensHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  allergensContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  allergenTag: {
-    backgroundColor: '#fee2e2',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#fecaca',
-  },
-  allergenText: {
-    fontSize: 12,
-    color: '#dc2626',
-    fontWeight: '500',
-  },
-  suggestionsButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  suggestionsButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -81,21 +80,21 @@ export default function Signup() {
   return (
     <GradientBackground colors={['#f093fb', '#f5576c']}>
       <KeyboardAvoidingView
-        style={styles.container}
+        className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <BlurView style={styles.formContainer} intensity={20} tint="light">
-            <View style={styles.header}>
-              <Text style={styles.title}>Create Account</Text>
-              <Text style={styles.subtitle}>Join us for a healthier lifestyle</Text>
+        <ScrollView contentContainerStyle={{ flex: 1, justifyContent: 'center', padding: 20 }}>
+          <BlurView className="rounded-2xl p-6 bg-white/10 border border-white/20" intensity={20} tint="light">
+            <View className="items-center mb-8">
+              <Text className="text-3xl font-bold text-white mb-2">Create Account</Text>
+              <Text className="text-base text-white/80 text-center">Join us for a healthier lifestyle</Text>
             </View>
 
-            <View style={styles.form}>
-              <View style={styles.inputContainer}>
-                <User size={20} color="#6c757d" style={styles.inputIcon} />
+            <View className="gap-4">
+              <View className="flex-row items-center bg-white/90 rounded-xl px-4 py-4">
+                <User size={20} color="#6c757d" className="mr-3" />
                 <TextInput
-                  style={styles.input}
+                  className="flex-1 text-base text-gray-800"
                   placeholder="Full name"
                   value={displayName}
                   onChangeText={setDisplayName}
@@ -104,10 +103,10 @@ export default function Signup() {
                 />
               </View>
 
-              <View style={styles.inputContainer}>
-                <Mail size={20} color="#6c757d" style={styles.inputIcon} />
+              <View className="flex-row items-center bg-white/90 rounded-xl px-4 py-4">
+                <Mail size={20} color="#6c757d" className="mr-3" />
                 <TextInput
-                  style={styles.input}
+                  className="flex-1 text-base text-gray-800"
                   placeholder="Email address"
                   value={email}
                   onChangeText={setEmail}
@@ -117,10 +116,10 @@ export default function Signup() {
                 />
               </View>
 
-              <View style={styles.inputContainer}>
-                <Lock size={20} color="#6c757d" style={styles.inputIcon} />
+              <View className="flex-row items-center bg-white/90 rounded-xl px-4 py-4">
+                <Lock size={20} color="#6c757d" className="mr-3" />
                 <TextInput
-                  style={[styles.input, { flex: 1 }]}
+                  className="flex-1 text-base text-gray-800"
                   placeholder="Password"
                   value={password}
                   onChangeText={setPassword}
@@ -129,7 +128,7 @@ export default function Signup() {
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
+                  className="p-1"
                 >
                   {showPassword ? (
                     <EyeOff size={20} color="#6c757d" />
@@ -139,10 +138,10 @@ export default function Signup() {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.inputContainer}>
-                <Lock size={20} color="#6c757d" style={styles.inputIcon} />
+              <View className="flex-row items-center bg-white/90 rounded-xl px-4 py-4">
+                <Lock size={20} color="#6c757d" className="mr-3" />
                 <TextInput
-                  style={[styles.input, { flex: 1 }]}
+                  className="flex-1 text-base text-gray-800"
                   placeholder="Confirm password"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -151,7 +150,7 @@ export default function Signup() {
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  style={styles.eyeButton}
+                  className="p-1"
                 >
                   {showConfirmPassword ? (
                     <EyeOff size={20} color="#6c757d" />
@@ -162,20 +161,20 @@ export default function Signup() {
               </View>
 
               <TouchableOpacity
-                style={[styles.signupButton, loading && styles.signupButtonDisabled]}
+                className={`bg-white rounded-xl py-4 items-center mt-4 ${loading ? 'opacity-70' : ''}`}
                 onPress={handleSignup}
                 disabled={loading}
               >
-                <Text style={styles.signupButtonText}>
+                <Text className="text-[#f093fb] text-lg font-semibold">
                   {loading ? 'Creating Account...' : 'Create Account'}
                 </Text>
               </TouchableOpacity>
 
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>Already have an account? </Text>
+              <View className="flex-row justify-center items-center mt-6">
+                <Text className="text-white/80 text-base">Already have an account? </Text>
                 <Link href="/(auth)/login" asChild>
                   <TouchableOpacity>
-                    <Text style={styles.linkText}>Sign In</Text>
+                    <Text className="text-white text-base font-semibold">Sign In</Text>
                   </TouchableOpacity>
                 </Link>
               </View>
@@ -186,88 +185,3 @@ export default function Signup() {
     </GradientBackground>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  formContainer: {
-    borderRadius: 20,
-    padding: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-  },
-  form: {
-    gap: 16,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-  },
-  eyeButton: {
-    padding: 4,
-  },
-  signupButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  signupButtonDisabled: {
-    opacity: 0.7,
-  },
-  signupButtonText: {
-    color: '#f093fb',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  footerText: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 16,
-  },
-  linkText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
@@ -63,10 +62,10 @@ export default function Analytics() {
 
   if (loading) {
     return (
-      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.centerContent}>
-            <Text style={styles.loadingText}>Loading analytics...</Text>
+      <LinearGradient colors={['#667eea', '#764ba2']} className="flex-1">
+        <SafeAreaView className="flex-1">
+          <View className="flex-1 justify-center items-center">
+            <Text className="text-white text-lg">Loading analytics...</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -75,12 +74,12 @@ export default function Analytics() {
 
   if (!analytics) {
     return (
-      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.centerContent}>
+      <LinearGradient colors={['#667eea', '#764ba2']} className="flex-1">
+        <SafeAreaView className="flex-1">
+          <View className="flex-1 justify-center items-center px-10 gap-4">
             <BarChart3 size={64} color="rgba(255, 255, 255, 0.5)" />
-            <Text style={styles.emptyTitle}>No data yet</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text className="text-2xl font-bold text-white">No data yet</Text>
+            <Text className="text-base text-white/80 text-center leading-6">
               Start scanning products to see your analytics!
             </Text>
           </View>
@@ -93,72 +92,72 @@ export default function Analytics() {
   const currentMonthScans = getCurrentMonthScans();
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
+    <LinearGradient colors={['#667eea', '#764ba2']} className="flex-1">
+      <SafeAreaView className="flex-1">
+        <View className="items-center pt-5 px-5 pb-5">
           <BarChart3 size={32} color="white" />
-          <Text style={styles.headerTitle}>Your Analytics</Text>
-          <Text style={styles.headerSubtitle}>Track your healthy shopping journey</Text>
+          <Text className="text-3xl font-bold text-white mt-3 mb-1">Your Analytics</Text>
+          <Text className="text-base text-white/90">Track your healthy shopping journey</Text>
         </View>
 
         <ScrollView
-          style={styles.scrollView}
+          className="flex-1"
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <View style={styles.content}>
+          <View className="p-5 gap-5">
             {/* Stats Overview */}
-            <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#22c55e' }]}>
+            <View className="flex-row flex-wrap gap-3">
+              <View className="bg-white rounded-2xl p-4 items-center flex-1 min-w-[45%]">
+                <View className="w-12 h-12 bg-green-500 rounded-full items-center justify-center mb-3">
                   <Scan size={24} color="white" />
                 </View>
-                <Text style={styles.statNumber}>{analytics.totalScans}</Text>
-                <Text style={styles.statLabel}>Total Scans</Text>
+                <Text className="text-2xl font-bold text-gray-900 mb-1">{analytics.totalScans}</Text>
+                <Text className="text-xs text-gray-600 text-center">Total Scans</Text>
               </View>
 
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#ef4444' }]}>
+              <View className="bg-white rounded-2xl p-4 items-center flex-1 min-w-[45%]">
+                <View className="w-12 h-12 bg-red-500 rounded-full items-center justify-center mb-3">
                   <Heart size={24} color="white" />
                 </View>
-                <Text style={styles.statNumber}>{analytics.favoriteCount}</Text>
-                <Text style={styles.statLabel}>Favorites</Text>
+                <Text className="text-2xl font-bold text-gray-900 mb-1">{analytics.favoriteCount}</Text>
+                <Text className="text-xs text-gray-600 text-center">Favorites</Text>
               </View>
 
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#3b82f6' }]}>
+              <View className="bg-white rounded-2xl p-4 items-center flex-1 min-w-[45%]">
+                <View className="w-12 h-12 bg-blue-500 rounded-full items-center justify-center mb-3">
                   <Calendar size={24} color="white" />
                 </View>
-                <Text style={styles.statNumber}>{currentMonthScans}</Text>
-                <Text style={styles.statLabel}>This Month</Text>
+                <Text className="text-2xl font-bold text-gray-900 mb-1">{currentMonthScans}</Text>
+                <Text className="text-xs text-gray-600 text-center">This Month</Text>
               </View>
 
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#8b5cf6' }]}>
+              <View className="bg-white rounded-2xl p-4 items-center flex-1 min-w-[45%]">
+                <View className="w-12 h-12 bg-purple-500 rounded-full items-center justify-center mb-3">
                   <TrendingUp size={24} color="white" />
                 </View>
-                <Text style={styles.statNumber}>
+                <Text className="text-2xl font-bold text-gray-900 mb-1">
                   {Object.keys(analytics.categoriesScanned).length}
                 </Text>
-                <Text style={styles.statLabel}>Categories</Text>
+                <Text className="text-xs text-gray-600 text-center">Categories</Text>
               </View>
             </View>
 
             {/* Top Categories */}
             {topCategories.length > 0 && (
-              <View style={styles.categoriesCard}>
-                <Text style={styles.cardTitle}>Top Categories Scanned</Text>
-                <View style={styles.categoriesList}>
+              <View className="bg-white rounded-2xl p-5">
+                <Text className="text-lg font-semibold text-gray-900 mb-4">Top Categories Scanned</Text>
+                <View className="gap-3">
                   {topCategories.map(([category, count], index) => (
-                    <View key={category} style={styles.categoryItem}>
-                      <View style={styles.categoryInfo}>
-                        <Text style={styles.categoryRank}>#{index + 1}</Text>
-                        <Text style={styles.categoryName}>{category}</Text>
+                    <View key={category} className="flex-row justify-between items-center py-2">
+                      <View className="flex-row items-center flex-1">
+                        <Text className="text-sm font-bold text-blue-600 w-6">#{index + 1}</Text>
+                        <Text className="text-sm text-gray-900 ml-3">{category}</Text>
                       </View>
-                      <View style={styles.categoryCount}>
-                        <Text style={styles.categoryCountText}>{count}</Text>
+                      <View className="bg-gray-100 px-2 py-1 rounded-lg">
+                        <Text className="text-xs font-semibold text-gray-600">{count}</Text>
                       </View>
                     </View>
                   ))}
@@ -167,9 +166,9 @@ export default function Analytics() {
             )}
 
             {/* Monthly Activity */}
-            <View style={styles.monthlyCard}>
-              <Text style={styles.cardTitle}>Monthly Activity</Text>
-              <View style={styles.monthlyList}>
+            <View className="bg-white rounded-2xl p-5">
+              <Text className="text-lg font-semibold text-gray-900 mb-4">Monthly Activity</Text>
+              <View className="gap-3">
                 {Object.entries(analytics.monthlyScans)
                   .sort(([a], [b]) => b.localeCompare(a))
                   .slice(0, 6)
@@ -180,9 +179,9 @@ export default function Analytics() {
                       year: 'numeric' 
                     });
                     return (
-                      <View key={month} style={styles.monthItem}>
-                        <Text style={styles.monthName}>{monthName}</Text>
-                        <Text style={styles.monthCount}>{count} scans</Text>
+                      <View key={month} className="flex-row justify-between items-center py-2 border-b border-gray-100">
+                        <Text className="text-sm text-gray-900">{monthName}</Text>
+                        <Text className="text-sm font-semibold text-gray-600">{count} scans</Text>
                       </View>
                     );
                   })}
@@ -190,9 +189,9 @@ export default function Analytics() {
             </View>
 
             {/* Achievement Card */}
-            <View style={styles.achievementCard}>
-              <Text style={styles.achievementTitle}>🏆 Achievement Unlocked!</Text>
-              <Text style={styles.achievementText}>
+            <View className="bg-white/90 rounded-2xl p-5 items-center">
+              <Text className="text-xl font-bold text-gray-900 mb-2 text-center">🏆 Achievement Unlocked!</Text>
+              <Text className="text-sm text-gray-700 text-center leading-5">
                 {analytics.totalScans >= 50 
                   ? "Nutrition Expert - You've scanned 50+ products!"
                   : analytics.totalScans >= 25
@@ -209,181 +208,3 @@ export default function Analytics() {
     </LinearGradient>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    gap: 16,
-  },
-  loadingText: {
-    color: 'white',
-    fontSize: 18,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  header: {
-    alignItems: 'center',
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-    gap: 20,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  statCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    flex: 1,
-    minWidth: '45%',
-  },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-  categoriesCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 16,
-  },
-  categoriesList: {
-    gap: 12,
-  },
-  categoryItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  categoryInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  categoryRank: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#667eea',
-    width: 24,
-  },
-  categoryName: {
-    fontSize: 14,
-    color: '#1f2937',
-    marginLeft: 12,
-  },
-  categoryCount: {
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  categoryCountText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  monthlyCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-  },
-  monthlyList: {
-    gap: 12,
-  },
-  monthItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  monthName: {
-    fontSize: 14,
-    color: '#1f2937',
-  },
-  monthCount: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  achievementCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-  },
-  achievementTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  achievementText: {
-    fontSize: 14,
-    color: '#4b5563',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-});

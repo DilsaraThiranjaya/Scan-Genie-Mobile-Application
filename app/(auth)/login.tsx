@@ -61,21 +61,21 @@ export default function Login() {
   return (
     <GradientBackground colors={['#667eea', '#764ba2']}>
       <KeyboardAvoidingView
-        style={styles.container}
+        className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <BlurView style={styles.formContainer} intensity={20} tint="light">
-            <View style={styles.header}>
-              <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>Sign in to continue your healthy journey</Text>
+        <ScrollView contentContainerStyle={{ flex: 1, justifyContent: 'center', padding: 20 }}>
+          <BlurView className="rounded-2xl p-6 bg-white/10 border border-white/20" intensity={20} tint="light">
+            <View className="items-center mb-8">
+              <Text className="text-3xl font-bold text-white mb-2">Welcome Back</Text>
+              <Text className="text-base text-white/80 text-center">Sign in to continue your healthy journey</Text>
             </View>
 
-            <View style={styles.form}>
-              <View style={styles.inputContainer}>
-                <Mail size={20} color="#6c757d" style={styles.inputIcon} />
+            <View className="gap-4">
+              <View className="flex-row items-center bg-white/90 rounded-xl px-4 py-4">
+                <Mail size={20} color="#6c757d" className="mr-3" />
                 <TextInput
-                  style={styles.input}
+                  className="flex-1 text-base text-gray-800"
                   placeholder="Email address"
                   value={email}
                   onChangeText={setEmail}
@@ -85,10 +85,10 @@ export default function Login() {
                 />
               </View>
 
-              <View style={styles.inputContainer}>
-                <Lock size={20} color="#6c757d" style={styles.inputIcon} />
+              <View className="flex-row items-center bg-white/90 rounded-xl px-4 py-4">
+                <Lock size={20} color="#6c757d" className="mr-3" />
                 <TextInput
-                  style={[styles.input, { flex: 1 }]}
+                  className="flex-1 text-base text-gray-800"
                   placeholder="Password"
                   value={password}
                   onChangeText={setPassword}
@@ -97,7 +97,7 @@ export default function Login() {
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
+                  className="p-1"
                 >
                   {showPassword ? (
                     <EyeOff size={20} color="#6c757d" />
@@ -108,26 +108,26 @@ export default function Login() {
               </View>
 
               <Link href="/(auth)/forgot-password" asChild>
-                <TouchableOpacity style={styles.forgotPassword}>
-                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                <TouchableOpacity className="self-end -mt-2">
+                  <Text className="text-white/80 text-sm">Forgot Password?</Text>
                 </TouchableOpacity>
               </Link>
 
               <TouchableOpacity
-                style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+                className={`bg-white rounded-xl py-4 items-center mt-4 ${loading ? 'opacity-70' : ''}`}
                 onPress={handleLogin}
                 disabled={loading}
               >
-                <Text style={styles.loginButtonText}>
+                <Text className="text-[#667eea] text-lg font-semibold">
                   {loading ? 'Signing In...' : 'Sign In'}
                 </Text>
               </TouchableOpacity>
 
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>Don't have an account? </Text>
+              <View className="flex-row justify-center items-center mt-6">
+                <Text className="text-white/80 text-base">Don't have an account? </Text>
                 <Link href="/(auth)/signup" asChild>
                   <TouchableOpacity>
-                    <Text style={styles.linkText}>Sign Up</Text>
+                    <Text className="text-white text-base font-semibold">Sign Up</Text>
                   </TouchableOpacity>
                 </Link>
               </View>
@@ -138,96 +138,3 @@ export default function Login() {
     </GradientBackground>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  formContainer: {
-    borderRadius: 20,
-    padding: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-  },
-  form: {
-    gap: 16,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-  },
-  eyeButton: {
-    padding: 4,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: -8,
-  },
-  forgotPasswordText: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 14,
-  },
-  loginButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  loginButtonDisabled: {
-    opacity: 0.7,
-  },
-  loginButtonText: {
-    color: '#667eea',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  footerText: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 16,
-  },
-  linkText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

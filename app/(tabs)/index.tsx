@@ -3,8 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
   Alert,
   Platform,
 } from 'react-native';
@@ -13,17 +11,20 @@ import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-ca
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/context/AuthContext';
 import { OpenFoodFactsService } from '@/services/openFoodFacts';
+import { AIProductSearchService } from '@/services/aiProductSearch';
 import { FirestoreService } from '@/services/firestore';
-import { Camera, Image as ImageIcon, LogOut, User } from 'lucide-react-native';
+import { Camera, Image as ImageIcon, LogOut, User, Sparkles } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import { Heart, ChartBar as BarChart3 } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 
 export default function Home() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [processingImage, setProcessingImage] = useState(false);
   const { user, logout } = useAuth();
 
   const handleBarcodeScan = async (result: BarcodeScanningResult) => {
@@ -69,18 +70,97 @@ export default function Home() {
   };
 
   const handleImagePicker = async () => {
+    setProcessingImage(true);
+    
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
-      aspect: [1, 1],
+      aspect: [4, 3],
       quality: 1,
     });
 
-    if (!result.canceled) {
+    if (!result.canceled && result.assets[0]) {
+      await processProductImage(result.assets[0].uri);
+    }
+    
+    setProcessingImage(false);
+  };
+
+  const processProductImage = async (imageUri: string) => {
+    if (!user) return;
+
+    try {
       Toast.show({
         type: 'info',
-        text1: 'Image Selected',
-        text2: 'Image analysis coming soon!',
+        text1: 'Analyzing Image',
+        text2: 'AI is identifying the product...',
+      });
+
+      // Step 1: Identify product using AI
+      const identification = await AIProductSearchService.identifyProductFromImage(imageUri);
+      
+      if (!identification || !identification.product_name) {
+        Toast.show({
+          type: 'error',
+          text1: 'Product Not Recognized',
+          text2: 'Could not identify the product from the image',
+        });
+        return;
+      }
+
+      Toast.show({
+        type: 'success',
+        text1: 'Product Identified!',
+        text2: identification.product_name,
+      });
+
+      // Step 2: Search Open Food Facts for similar products
+      const searchResults = await OpenFoodFactsService.searchProductsByName(
+        identification.product_name,
+        identification.category
+      );
+
+      if (searchResults.length > 0) {
+        // Use the first/best match
+        const product = searchResults[0];
+        await FirestoreService.addScanToHistory(user.uid, product);
+        
+        router.push({
+          pathname: '/(tabs)/results',
+          params: { 
+            productData: JSON.stringify(product),
+            aiIdentified: 'true',
+            originalImage: imageUri
+          }
+        });
+      } else {
+        // Create a basic product from AI identification
+        const basicProduct = {
+          id: `ai_${Date.now()}`,
+          barcode: 'AI_IDENTIFIED',
+          name: identification.product_name,
+          brand: identification.brand,
+          category: identification.category,
+          imageUrl: imageUri,
+          scannedAt: new Date(),
+        };
+
+        await FirestoreService.addScanToHistory(user.uid, basicProduct);
+        
+        router.push({
+          pathname: '/(tabs)/results',
+          params: { 
+            productData: JSON.stringify(basicProduct),
+            aiIdentified: 'true',
+            originalImage: imageUri
+          }
+        });
+      }
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Analysis Failed',
+        text2: 'Could not process the image. Please try again.',
       });
     }
   };
@@ -112,42 +192,45 @@ export default function Home() {
 
   if (!permission) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View className="flex-1 justify-center items-center">
         <Text>Requesting camera permission...</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>We need your permission to show the camera</Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+      <View className="flex-1 justify-center items-center p-5">
+        <Text className="text-lg text-center mb-5">We need your permission to show the camera</Text>
+        <TouchableOpacity 
+          className="bg-blue-500 px-6 py-3 rounded-lg"
+          onPress={requestPermission}
+        >
+          <Text className="text-white text-base font-semibold">Grant Permission</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (scanning) {
     return (
-      <View style={styles.cameraContainer}>
+      <View className="flex-1">
         <CameraView
-          style={styles.camera}
+          className="flex-1"
           facing="back"
           onBarcodeScanned={handleBarcodeScan}
           barcodeScannerSettings={{
             barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39'],
           }}
         >
-          <BlurView style={styles.scanOverlay} intensity={20} tint="dark">
-            <Text style={styles.scanText}>Position barcode in the center</Text>
-            <View style={styles.scanFrame} />
+          <BlurView className="flex-1 justify-center items-center p-5" intensity={20} tint="dark">
+            <Text className="text-white text-lg text-center mb-10">Position barcode in the center</Text>
+            <View className="w-64 h-64 border-2 border-white rounded-xl bg-transparent" />
             <TouchableOpacity
-              style={styles.cancelButton}
+              className="mt-10 px-6 py-3 bg-white/20 rounded-lg border border-white/30"
               onPress={() => setScanning(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text className="text-white text-base font-semibold">Cancel</Text>
             </TouchableOpacity>
           </BlurView>
         </CameraView>
@@ -156,245 +239,81 @@ export default function Home() {
   }
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <View style={styles.userInfo}>
+    <LinearGradient colors={['#667eea', '#764ba2']} className="flex-1">
+      <View className="flex-1 px-5 pt-5">
+        <View className="flex-row justify-between items-center mb-2.5">
+          <View className="flex-row items-center gap-2">
             <User size={24} color="white" />
-            <Text style={styles.welcomeText}>
+            <Text className="text-white text-lg font-semibold">
               Welcome, {user?.displayName || 'User'}!
             </Text>
           </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <TouchableOpacity className="p-2" onPress={handleLogout}>
             <LogOut size={24} color="white" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.content}>
-          <BlurView style={styles.mainCard} intensity={20} tint="light">
-            <Text style={styles.title}>AI Shopping Assistant</Text>
-            <Text style={styles.subtitle}>
+        <View className="flex-1 p-5 gap-5">
+          <BlurView className="rounded-2xl p-6 bg-white/10 border border-white/20" intensity={20} tint="light">
+            <Text className="text-white text-2xl font-bold text-center mb-2">AI Shopping Assistant</Text>
+            <Text className="text-white/80 text-base text-center mb-8 leading-6">
               Scan products to get instant nutrition insights and healthier alternatives
             </Text>
 
-            <View style={styles.actionButtons}>
+            <View className="gap-4">
               <TouchableOpacity
-                style={[styles.actionButton, styles.scanButton]}
+                className="flex-row items-center justify-center py-4 rounded-xl bg-white/20 border border-white/30 gap-3"
                 onPress={() => setScanning(true)}
                 disabled={loading}
               >
                 <Camera size={32} color="white" />
-                <Text style={styles.actionButtonText}>Scan Barcode</Text>
+                <Text className="text-white text-lg font-semibold">Scan Barcode</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.actionButton, styles.imageButton]}
+                className="flex-row items-center justify-center py-4 rounded-xl bg-white gap-3"
                 onPress={handleImagePicker}
-                disabled={loading}
+                disabled={loading || processingImage}
               >
-                <ImageIcon size={32} color="#667eea" />
-                <Text style={[styles.actionButtonText, styles.imageButtonText]}>
-                  Upload Image
+                {processingImage ? (
+                  <Sparkles size={32} color="#667eea" />
+                ) : (
+                  <ImageIcon size={32} color="#667eea" />
+                )}
+                <Text className="text-blue-500 text-lg font-semibold">
+                  {processingImage ? 'Analyzing...' : 'AI Photo Scan'}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {loading && (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Processing...</Text>
+            {(loading || processingImage) && (
+              <View className="mt-4 items-center">
+                <Text className="text-white/80 text-base">
+                  {processingImage ? 'AI is analyzing your image...' : 'Processing...'}
+                </Text>
               </View>
             )}
           </BlurView>
 
-          <View style={styles.featuresGrid}>
+          <View className="flex-row gap-4">
             <TouchableOpacity
-              style={styles.featureCard}
+              className="flex-1 bg-white/90 rounded-xl p-5 items-center gap-2"
               onPress={() => router.push('/(tabs)/favorites')}
             >
               <Heart size={24} color="#667eea" />
-              <Text style={styles.featureText}>Favorites</Text>
+              <Text className="text-gray-800 text-base font-semibold">Favorites</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.featureCard}
+              className="flex-1 bg-white/90 rounded-xl p-5 items-center gap-2"
               onPress={() => router.push('/(tabs)/analytics')}
             >
               <BarChart3 size={24} color="#667eea" />
-              <Text style={styles.featureText}>Analytics</Text>
+              <Text className="text-gray-800 text-base font-semibold">Analytics</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  permissionText: {
-    fontSize: 18,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  permissionButton: {
-    backgroundColor: '#667eea',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  permissionButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  welcomeText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  logoutButton: {
-    padding: 8,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-    gap: 20,
-  },
-  mainCard: {
-    borderRadius: 20,
-    padding: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 22,
-  },
-  actionButtons: {
-    gap: 16,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 12,
-  },
-  scanButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  imageButton: {
-    backgroundColor: 'white',
-  },
-  actionButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: 'white',
-  },
-  imageButtonText: {
-    color: '#667eea',
-  },
-  loadingContainer: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 16,
-  },
-  featuresGrid: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  featureCard: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    gap: 8,
-  },
-  featureText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  cameraContainer: {
-    flex: 1,
-  },
-  camera: {
-    flex: 1,
-  },
-  scanOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  scanText: {
-    color: 'white',
-    fontSize: 18,
-    textAlign: 'center',
-    marginBottom: 40,
-  },
-  scanFrame: {
-    width: 250,
-    height: 250,
-    borderWidth: 3,
-    borderColor: 'white',
-    borderRadius: 12,
-    backgroundColor: 'transparent',
-  },
-  cancelButton: {
-    marginTop: 40,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  cancelButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

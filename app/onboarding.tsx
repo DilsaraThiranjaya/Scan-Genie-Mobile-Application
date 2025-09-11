@@ -82,9 +82,9 @@ export default function Onboarding() {
 
   return (
     <GradientBackground colors={onboardingSteps[currentStep].colors}>
-      <View style={styles.container}>
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip</Text>
+      <View className="flex-1 pt-16">
+        <TouchableOpacity className="absolute top-16 right-5 z-10 px-4 py-2" onPress={handleSkip}>
+          <Text className="text-white text-base font-medium">Skip</Text>
         </TouchableOpacity>
 
         <ScrollView
@@ -93,35 +93,36 @@ export default function Onboarding() {
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={handleScroll}
-          style={styles.scrollView}
+          className="flex-1"
         >
           {onboardingSteps.map((step, index) => (
-            <View key={index} style={styles.stepContainer}>
-              <View style={styles.iconContainer}>
+            <View key={index} style={{ width }} className="flex-1 justify-center items-center px-10">
+              <View className="mb-10">
                 <step.icon size={120} color="white" strokeWidth={1.5} />
               </View>
               
-              <Text style={styles.title}>{step.title}</Text>
-              <Text style={styles.description}>{step.description}</Text>
+              <Text className="text-4xl font-bold text-white text-center mb-5">{step.title}</Text>
+              <Text className="text-lg text-white/90 text-center leading-7">{step.description}</Text>
             </View>
           ))}
         </ScrollView>
 
-        <View style={styles.footer}>
-          <View style={styles.pagination}>
+        <View className="px-10 pb-10">
+          <View className="flex-row justify-center mb-8">
             {onboardingSteps.map((_, index) => (
               <View
                 key={index}
-                style={[
-                  styles.paginationDot,
-                  index === currentStep && styles.paginationDotActive,
-                ]}
+                className={`h-2 rounded-full mx-1 ${
+                  index === currentStep 
+                    ? 'w-5 bg-white' 
+                    : 'w-2 bg-white/50'
+                }`}
               />
             ))}
           </View>
 
-          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-            <Text style={styles.nextButtonText}>
+          <TouchableOpacity className="bg-white/20 rounded-3xl py-4 items-center border border-white/30" onPress={handleNext}>
+            <Text className="text-white text-lg font-semibold">
               {currentStep === onboardingSteps.length - 1 ? 'Get Started' : 'Next'}
             </Text>
           </TouchableOpacity>
@@ -130,82 +131,3 @@ export default function Onboarding() {
     </GradientBackground>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 60,
-  },
-  skipButton: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    zIndex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  skipText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  stepContainer: {
-    width,
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  iconContainer: {
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  description: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    lineHeight: 26,
-  },
-  footer: {
-    paddingHorizontal: 40,
-    paddingBottom: 40,
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 30,
-  },
-  paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    marginHorizontal: 4,
-  },
-  paginationDotActive: {
-    backgroundColor: 'white',
-    width: 20,
-  },
-  nextButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 25,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  nextButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-});
