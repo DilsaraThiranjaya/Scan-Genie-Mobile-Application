@@ -131,3 +131,6 @@ export default function Onboarding() {
     </GradientBackground>
   );
 }
+
+// Keep minimal styles for complex layouts
+const styles = StyleSheet.create({});

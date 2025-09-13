@@ -62,6 +62,20 @@ export interface AIProductIdentification {
   error?: string;
 }
 
+export interface AIAlternative {
+  name: string;
+  brand: string;
+  category: string;
+  estimated_price: string;
+  original_price?: string;
+  savings_percentage: number;
+  reason: string;
+  key_features: string[];
+  where_to_find: string;
+  confidence: number;
+  alternative_type: 'budget' | 'healthier' | 'eco_friendly';
+}
+
 export type RootStackParamList = {
   Onboarding: undefined;
   Auth: undefined;
@@ -76,8 +90,8 @@ export type AuthStackParamList = {
 
 export type TabsParamList = {
   Home: undefined;
-  Results: { product?: Product };
-  Suggestions: { product?: Product };
+  Results: { product?: Product; aiIdentified?: string; originalImage?: string };
+  Suggestions: { product?: Product; aiIdentified?: string };
   Favorites: undefined;
   Analytics: undefined;
 };

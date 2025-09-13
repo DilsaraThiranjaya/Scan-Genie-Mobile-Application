@@ -138,3 +138,6 @@ export default function Login() {
     </GradientBackground>
   );
 }
+
+// Keep minimal styles for complex layouts that need StyleSheet
+const styles = StyleSheet.create({});

@@ -8,7 +8,7 @@ import {
   Image,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { FirestoreService } from '@/services/firestore';
 import { Product } from '@/types';
@@ -21,6 +21,7 @@ import Toast from 'react-native-toast-message';
 export default function Results() {
   const { productData, aiIdentified, originalImage } = useLocalSearchParams();
   const { user } = useAuth();
+  const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -225,7 +226,16 @@ export default function Results() {
               </View>
             )}
 
-            <TouchableOpacity className="bg-white/20 border border-white/30 rounded-xl p-4 flex-row items-center justify-center gap-2">
+            <TouchableOpacity 
+              className="bg-white/20 border border-white/30 rounded-xl p-4 flex-row items-center justify-center gap-2"
+              onPress={() => router.push({
+                pathname: '/(tabs)/suggestions',
+                params: { 
+                  productData: JSON.stringify(product),
+                  aiIdentified: aiIdentified || 'false'
+                }
+              })}
+            >
               <Text className="text-white text-base font-semibold">
                 {aiIdentified === 'true' ? 'Find Cheaper AI Alternatives' : 'View Healthier Alternatives'}
               </Text>
