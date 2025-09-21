@@ -1,19 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
-  View,
-  Text,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  Platform,
+  View, Text, SafeAreaView, ScrollView,
+  TouchableOpacity, Image, Platform, StyleSheet
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { FirestoreService } from '@/services/firestore';
 import { Product } from '@/types';
-import { Heart, ArrowRight, Info, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle } from 'lucide-react-native';
-import { Sparkles } from 'lucide-react-native';
+import { Heart, ArrowRight, Info, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, Sparkles } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Toast from 'react-native-toast-message';
@@ -24,48 +18,70 @@ export default function Results() {
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const savedOnceRef = useRef(false);
 
   useEffect(() => {
     if (productData) {
       try {
         const parsed = JSON.parse(productData as string);
-        setProduct(parsed);
+        const normalized: Product = {
+          id: parsed.id ?? `local_${Date.now()}`,
+          barcode: parsed.barcode ?? parsed.id ?? undefined,
+          name: parsed.name ?? 'Unknown Product',
+          brand: parsed.brand ?? undefined,
+          category: parsed.category ?? 'Unknown',
+          imageUrl: parsed.imageUrl ?? undefined,
+          nutritionGrade: parsed.nutritionGrade ?? undefined,
+          ingredients: Array.isArray(parsed.ingredients)
+            ? parsed.ingredients
+            : (parsed.ingredients
+              ? String(parsed.ingredients).split(',').map((s: string) => s.trim()).filter(Boolean)
+              : []),
+          allergens: Array.isArray(parsed.allergens)
+            ? parsed.allergens
+            : (parsed.allergens
+              ? String(parsed.allergens).split(',').map((s: string) => s.trim()).filter(Boolean)
+              : []),
+          nutritionFacts: parsed.nutritionFacts ?? undefined,
+          scannedAt: parsed.scannedAt ? new Date(parsed.scannedAt) : new Date(),
+        };
+        setProduct(normalized);
       } catch (error) {
         console.error('Error parsing product data:', error);
+        Toast.show({ type: 'error', text1: 'Invalid product data', text2: 'Could not load product' });
       }
     }
   }, [productData]);
 
+  // Save scan once
+  useEffect(() => {
+    const saveScan = async () => {
+      if (!product || !user || savedOnceRef.current) return;
+      try {
+        await FirestoreService.addScanToHistory(user.uid, product);
+        savedOnceRef.current = true;
+      } catch (error) {
+        console.error('Failed to save scan to firestore:', error);
+      }
+    };
+    saveScan();
+  }, [product, user]);
+
   const toggleFavorite = async () => {
     if (!product || !user) return;
-
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     try {
       if (isFavorite) {
-        Toast.show({
-          type: 'info',
-          text1: 'Removed from favorites',
-          text2: product.name,
-        });
+        Toast.show({ type: 'info', text1: 'Removed from favorites', text2: product.name });
         setIsFavorite(false);
       } else {
         await FirestoreService.addFavorite(user.uid, product);
-        Toast.show({
-          type: 'success',
-          text1: 'Added to favorites',
-          text2: product.name,
-        });
+        Toast.show({ type: 'success', text1: 'Added to favorites', text2: product.name });
         setIsFavorite(true);
       }
     } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to update favorites',
-      });
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update favorites' });
     }
   };
 
@@ -83,24 +99,20 @@ export default function Results() {
   const getNutritionGradeIcon = (grade?: string) => {
     switch (grade?.toLowerCase()) {
       case 'a':
-      case 'b':
-        return CheckCircle;
-      case 'c':
-        return Info;
+      case 'b': return CheckCircle;
+      case 'c': return Info;
       case 'd':
-      case 'e':
-        return AlertTriangle;
-      default:
-        return Info;
+      case 'e': return AlertTriangle;
+      default: return Info;
     }
   };
 
   if (!product) {
     return (
-      <LinearGradient colors={['#667eea', '#764ba2']} className="flex-1">
-        <SafeAreaView className="flex-1">
-          <View className="flex-1 justify-center items-center">
-            <Text className="text-white text-lg">No product data available</Text>
+      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.flex1}>
+        <SafeAreaView style={styles.flex1}>
+          <View style={styles.centerContent}>
+            <Text style={styles.whiteTextLg}>No product data available</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -110,40 +122,34 @@ export default function Results() {
   const GradeIcon = getNutritionGradeIcon(product.nutritionGrade);
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2']} className="flex-1">
-      <SafeAreaView className="flex-1">
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          <View className="p-5 gap-4">
-            <View className="bg-white rounded-2xl overflow-hidden">
+    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.flex1}>
+      <SafeAreaView style={styles.flex1}>
+        <ScrollView style={styles.flex1} showsVerticalScrollIndicator={false}>
+          <View style={styles.container}>
+            {/* Product Card */}
+            <View style={styles.card}>
               {(originalImage || product.imageUrl) && (
-                <View className="relative">
-                  <Image 
-                    source={{ uri: originalImage as string || product.imageUrl }} 
-                    className="w-full h-48"
+                <View style={styles.relative}>
+                  <Image
+                    source={{ uri: (originalImage as string) || product.imageUrl }}
+                    style={styles.productImage}
                     resizeMode="cover"
                   />
                   {aiIdentified === 'true' && (
-                    <View className="absolute top-3 right-3 bg-blue-600/90 flex-row items-center px-2 py-1 rounded-xl gap-1">
+                    <View style={styles.aiBadge}>
                       <Sparkles size={16} color="white" />
-                      <Text className="text-white text-xs font-semibold">AI Identified</Text>
+                      <Text style={styles.aiBadgeText}>AI Identified</Text>
                     </View>
                   )}
                 </View>
               )}
-              
-              <View className="p-4">
-                <View className="flex-row justify-between items-start mb-2">
-                  <View className="flex-1 mr-3">
-                    <Text className="text-xl font-bold text-gray-900 mb-1">{product.name}</Text>
-                    {product.brand && (
-                      <Text className="text-base text-gray-600">{product.brand}</Text>
-                    )}
+              <View style={styles.padded}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.flex1}>
+                    <Text style={styles.productTitle}>{product.name}</Text>
+                    {product.brand && <Text style={styles.productBrand}>{product.brand}</Text>}
                   </View>
-                  
-                  <TouchableOpacity
-                    className="p-2"
-                    onPress={toggleFavorite}
-                  >
+                  <TouchableOpacity style={styles.touchableIcon} onPress={toggleFavorite}>
                     <Heart
                       size={24}
                       color={isFavorite ? '#ef4444' : '#6b7280'}
@@ -151,92 +157,79 @@ export default function Results() {
                     />
                   </TouchableOpacity>
                 </View>
-
                 {product.category && (
-                  <View className="self-start bg-gray-100 px-3 py-1 rounded-xl">
-                    <Text className="text-xs text-gray-600 font-medium">{product.category}</Text>
+                  <View style={styles.categoryBadge}>
+                    <Text style={styles.categoryText}>{product.category}</Text>
                   </View>
                 )}
               </View>
             </View>
 
+            {/* Nutrition Score */}
             {product.nutritionGrade && (
-              <View className="bg-white rounded-2xl p-4 flex-row items-center justify-between">
-                <View className="flex-row items-center gap-3">
-                  <GradeIcon 
-                    size={24} 
-                    color={getNutritionGradeColor(product.nutritionGrade)} 
-                  />
-                  <Text className="text-lg font-semibold text-gray-900">Nutrition Score</Text>
+              <View style={styles.nutritionCard}>
+                <View style={styles.row}>
+                  <GradeIcon size={24} color={getNutritionGradeColor(product.nutritionGrade)} />
+                  <Text style={styles.nutritionTitle}>Nutrition Score</Text>
                 </View>
-                <View 
-                  className="w-10 h-10 rounded-full items-center justify-center"
-                  style={{ backgroundColor: getNutritionGradeColor(product.nutritionGrade) }}
-                >
-                  <Text className="text-white text-lg font-bold">
-                    {product.nutritionGrade.toUpperCase()}
-                  </Text>
+                <View style={[styles.gradeCircle, { backgroundColor: getNutritionGradeColor(product.nutritionGrade) }]}>
+                  <Text style={styles.gradeText}>{product.nutritionGrade.toUpperCase()}</Text>
                 </View>
               </View>
             )}
 
+            {/* Nutrition Facts */}
             {product.nutritionFacts && (
-              <View className="bg-white rounded-2xl p-4">
-                <Text className="text-lg font-semibold text-gray-900 mb-3">Nutrition Facts (per 100g)</Text>
-                <View className="gap-2">
-                  {Object.entries(product.nutritionFacts).map(([key, value]) => {
-                    if (!value) return null;
-                    return (
-                      <View key={key} className="flex-row justify-between items-center py-2 border-b border-gray-100">
-                        <Text className="text-sm text-gray-600 capitalize">
-                          {key.replace(/([A-Z])/g, ' $1').trim()}
-                        </Text>
-                        <Text className="text-sm font-semibold text-gray-900">
-                          {typeof value === 'number' ? `${value.toFixed(1)}g` : value}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Nutrition Facts (per 100g)</Text>
+                {Object.entries(product.nutritionFacts).map(([key, value]) => {
+                  if (value === null || value === undefined) return null;
+                  return (
+                    <View key={key} style={styles.factRow}>
+                      <Text style={styles.factLabel}>{key.replace(/([A-Z])/g, ' $1').trim()}</Text>
+                      <Text style={styles.factValue}>
+                        {typeof value === 'number' ? `${value.toFixed(1)}g` : String(value)}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
             )}
 
-            {product.ingredients && product.ingredients.length > 0 && (
-              <View className="bg-white rounded-2xl p-4">
-                <Text className="text-lg font-semibold text-gray-900 mb-3">Ingredients</Text>
-                <Text className="text-sm text-gray-700 leading-5">
-                  {product.ingredients.join(', ')}
-                </Text>
+            {/* Ingredients */}
+            {Array.isArray(product.ingredients) && product.ingredients.length > 0 && (
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Ingredients</Text>
+                <Text style={styles.ingredientsText}>{product.ingredients.join(', ')}</Text>
               </View>
             )}
 
-            {product.allergens && product.allergens.length > 0 && (
-              <View className="bg-white rounded-2xl p-4">
-                <View className="flex-row items-center gap-2 mb-3">
+            {/* Allergens */}
+            {Array.isArray(product.allergens) && product.allergens.length > 0 && (
+              <View style={styles.sectionCard}>
+                <View style={styles.allergenHeader}>
                   <AlertTriangle size={20} color="#ef4444" />
-                  <Text className="text-lg font-semibold text-gray-900">Allergens</Text>
+                  <Text style={styles.sectionTitle}>Allergens</Text>
                 </View>
-                <View className="flex-row flex-wrap gap-2">
-                  {product.allergens.map((allergen, index) => (
-                    <View key={index} className="bg-red-50 border border-red-200 px-3 py-1 rounded-xl">
-                      <Text className="text-xs text-red-600 font-medium">{allergen}</Text>
+                <View style={styles.allergenList}>
+                  {product.allergens.map((a, i) => (
+                    <View key={i} style={styles.allergenBadge}>
+                      <Text style={styles.allergenText}>{a}</Text>
                     </View>
                   ))}
                 </View>
               </View>
             )}
 
-            <TouchableOpacity 
-              className="bg-white/20 border border-white/30 rounded-xl p-4 flex-row items-center justify-center gap-2"
+            {/* Alternatives Button */}
+            <TouchableOpacity
+              style={styles.altButton}
               onPress={() => router.push({
                 pathname: '/(tabs)/suggestions',
-                params: { 
-                  productData: JSON.stringify(product),
-                  aiIdentified: aiIdentified || 'false'
-                }
+                params: { productData: JSON.stringify(product), aiIdentified: aiIdentified || 'false' }
               })}
             >
-              <Text className="text-white text-base font-semibold">
+              <Text style={styles.altButtonText}>
                 {aiIdentified === 'true' ? 'Find Cheaper AI Alternatives' : 'View Healthier Alternatives'}
               </Text>
               <ArrowRight size={20} color="white" />
@@ -247,3 +240,51 @@ export default function Results() {
     </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  whiteTextLg: { color: '#fff', fontSize: 18 },
+  container: { padding: 20, gap: 16 },
+  card: { backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden' },
+  relative: { position: 'relative' },
+  productImage: { width: '100%', height: 192 },
+  aiBadge: {
+    position: 'absolute', top: 12, right: 12,
+    backgroundColor: 'rgba(37, 99, 235, 0.9)',
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 12, gap: 4
+  },
+  aiBadgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  padded: { padding: 16 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+  productTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827', marginBottom: 4 },
+  productBrand: { fontSize: 16, color: '#4b5563' },
+  flex1Item: { flex: 1 },
+  touchableIcon: { padding: 8 },
+  categoryBadge: { alignSelf: 'flex-start', backgroundColor: '#f3f4f6', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  categoryText: { fontSize: 12, color: '#4b5563', fontWeight: '500' },
+  nutritionCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  nutritionTitle: { fontSize: 18, fontWeight: '600', color: '#111827' },
+  gradeCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  gradeText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  sectionCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#111827', marginBottom: 12 },
+  factRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  factLabel: { fontSize: 14, color: '#4b5563', textTransform: 'capitalize' },
+  factValue: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  ingredientsText: { fontSize: 14, color: '#374151', lineHeight: 20 },
+  allergenHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  allergenList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  allergenBadge: { backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fecaca', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  allergenText: { fontSize: 12, color: '#dc2626', fontWeight: '500' },
+  altButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 12, padding: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8
+  },
+  altButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+});

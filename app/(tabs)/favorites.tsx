@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  StyleSheet,
 } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { FirestoreService } from '@/services/firestore';
@@ -79,10 +80,10 @@ export default function Favorites() {
 
   if (loading) {
     return (
-      <LinearGradient colors={['#f093fb', '#f5576c']} className="flex-1">
-        <SafeAreaView className="flex-1">
-          <View className="flex-1 justify-center items-center">
-            <Text className="text-white text-lg">Loading favorites...</Text>
+      <LinearGradient colors={['#f093fb', '#f5576c']} style={styles.flex1}>
+        <SafeAreaView style={styles.flex1}>
+          <View style={styles.centerContent}>
+            <Text style={styles.loadingText}>Loading favorites...</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -90,70 +91,72 @@ export default function Favorites() {
   }
 
   return (
-    <LinearGradient colors={['#f093fb', '#f5576c']} className="flex-1">
-      <SafeAreaView className="flex-1">
-        <View className="items-center pt-5 px-5 pb-5">
+    <LinearGradient colors={['#f093fb', '#f5576c']} style={styles.flex1}>
+      <SafeAreaView style={styles.flex1}>
+        <View style={styles.header}>
           <Heart size={32} color="white" fill="white" />
-          <Text className="text-3xl font-bold text-white mt-3 mb-1">My Favorites</Text>
-          <Text className="text-base text-white/90">
+          <Text style={styles.headerTitle}>My Favorites</Text>
+          <Text style={styles.headerSubtitle}>
             {favorites.length} saved {favorites.length === 1 ? 'product' : 'products'}
           </Text>
         </View>
 
         {favorites.length === 0 ? (
-          <View className="flex-1 justify-center items-center px-10 gap-4">
+          <View style={styles.emptyState}>
             <Heart size={64} color="rgba(255, 255, 255, 0.5)" />
-            <Text className="text-2xl font-bold text-white">No favorites yet</Text>
-            <Text className="text-base text-white/80 text-center leading-6">
+            <Text style={styles.emptyTitle}>No favorites yet</Text>
+            <Text style={styles.emptySubtitle}>
               Start scanning products to add them to your favorites!
             </Text>
           </View>
         ) : (
           <ScrollView
-            className="flex-1"
+            style={styles.flex1}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
           >
-            <View className="p-5 gap-4">
+            <View style={styles.list}>
               {favorites.map((favorite) => (
-                <View key={favorite.id} className="bg-white rounded-2xl p-4 flex-row items-center justify-between">
-                  <View className="flex-1 flex-row items-center gap-3">
+                <View key={favorite.id} style={styles.card}>
+                  <View style={styles.cardLeft}>
                     {favorite.product.imageUrl && (
                       <Image
                         source={{ uri: favorite.product.imageUrl }}
-                        className="w-15 h-15 rounded-lg bg-gray-100"
+                        style={styles.productImage}
                       />
                     )}
-                    
-                    <View className="flex-1 gap-1">
-                      <Text className="text-base font-semibold text-gray-900">
+
+                    <View style={styles.productInfo}>
+                      <Text style={styles.productName}>
                         {favorite.product.name}
                       </Text>
                       {favorite.product.brand && (
-                        <Text className="text-sm text-gray-600">
+                        <Text style={styles.productBrand}>
                           {favorite.product.brand}
                         </Text>
                       )}
                       {favorite.product.category && (
-                        <Text className="text-xs text-gray-500">
+                        <Text style={styles.productCategory}>
                           {favorite.product.category}
                         </Text>
                       )}
-                      
-                      <View className="flex-row items-center gap-2 mt-1">
+
+                      <View style={styles.nutritionRow}>
                         {favorite.product.nutritionGrade && (
-                          <View 
-                            className="w-5 h-5 rounded-full items-center justify-center"
-                            style={{ backgroundColor: getNutritionGradeColor(favorite.product.nutritionGrade) }}
+                          <View
+                            style={[
+                              styles.nutritionBadge,
+                              { backgroundColor: getNutritionGradeColor(favorite.product.nutritionGrade) },
+                            ]}
                           >
-                            <Text className="text-white text-xs font-bold">
+                            <Text style={styles.nutritionText}>
                               {favorite.product.nutritionGrade.toUpperCase()}
                             </Text>
                           </View>
                         )}
-                        <Text className="text-xs text-gray-500">
+                        <Text style={styles.addedAt}>
                           Added {favorite.addedAt.toDateString()}
                         </Text>
                       </View>
@@ -161,7 +164,7 @@ export default function Favorites() {
                   </View>
 
                   <TouchableOpacity
-                    className="p-2"
+                    style={styles.removeButton}
                     onPress={() => removeFavorite(favorite.id)}
                   >
                     <Trash2 size={20} color="#ef4444" />
@@ -175,3 +178,73 @@ export default function Favorites() {
     </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { color: '#ffffff', fontSize: 18 },
+  header: {
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  headerTitle: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  headerSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.9)' },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    gap: 16,
+  },
+  emptyTitle: { fontSize: 22, fontWeight: 'bold', color: '#ffffff' },
+  emptySubtitle: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  list: { padding: 20, gap: 16 },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  productImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+  },
+  productInfo: { flex: 1, gap: 4 },
+  productName: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  productBrand: { fontSize: 14, color: '#4b5563' },
+  productCategory: { fontSize: 12, color: '#6b7280' },
+  nutritionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  nutritionBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nutritionText: { color: '#ffffff', fontSize: 10, fontWeight: 'bold' },
+  addedAt: { fontSize: 12, color: '#6b7280' },
+  removeButton: { padding: 8 },
+});

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  Animated,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
@@ -25,6 +27,24 @@ export default function Signup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handleSignup = async () => {
     if (!email || !password || !confirmPassword || !displayName) {
@@ -80,108 +100,233 @@ export default function Signup() {
   return (
     <GradientBackground colors={['#f093fb', '#f5576c']}>
       <KeyboardAvoidingView
-        className="flex-1"
+        style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView contentContainerStyle={{ flex: 1, justifyContent: 'center', padding: 20 }}>
-          <BlurView className="rounded-2xl p-6 bg-white/10 border border-white/20" intensity={20} tint="light">
-            <View className="items-center mb-8">
-              <Text className="text-3xl font-bold text-white mb-2">Create Account</Text>
-              <Text className="text-base text-white/80 text-center">Join us for a healthier lifestyle</Text>
-            </View>
-
-            <View className="gap-4">
-              <View className="flex-row items-center bg-white/90 rounded-xl px-4 py-4">
-                <User size={20} color="#6c757d" className="mr-3" />
-                <TextInput
-                  className="flex-1 text-base text-gray-800"
-                  placeholder="Full name"
-                  value={displayName}
-                  onChangeText={setDisplayName}
-                  autoCapitalize="words"
-                  autoComplete="name"
-                />
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Animated.View
+            style={[
+              styles.formContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}
+          >
+            <BlurView style={styles.blurContainer} intensity={20} tint="light">
+              <View style={styles.header}>
+                <Text style={styles.title}>Create Account</Text>
+                <Text style={styles.subtitle}>Join us for a healthier lifestyle</Text>
               </View>
 
-              <View className="flex-row items-center bg-white/90 rounded-xl px-4 py-4">
-                <Mail size={20} color="#6c757d" className="mr-3" />
-                <TextInput
-                  className="flex-1 text-base text-gray-800"
-                  placeholder="Email address"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                />
-              </View>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputWrapper}>
+                  <User size={20} color="#6c757d" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Full name"
+                    placeholderTextColor="#9ca3af"
+                    value={displayName}
+                    onChangeText={setDisplayName}
+                    autoCapitalize="words"
+                    autoComplete="name"
+                  />
+                </View>
 
-              <View className="flex-row items-center bg-white/90 rounded-xl px-4 py-4">
-                <Lock size={20} color="#6c757d" className="mr-3" />
-                <TextInput
-                  className="flex-1 text-base text-gray-800"
-                  placeholder="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoComplete="new-password"
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  className="p-1"
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} color="#6c757d" />
-                  ) : (
-                    <Eye size={20} color="#6c757d" />
-                  )}
-                </TouchableOpacity>
-              </View>
+                <View style={styles.inputWrapper}>
+                  <Mail size={20} color="#6c757d" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Email address"
+                    placeholderTextColor="#9ca3af"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                  />
+                </View>
 
-              <View className="flex-row items-center bg-white/90 rounded-xl px-4 py-4">
-                <Lock size={20} color="#6c757d" className="mr-3" />
-                <TextInput
-                  className="flex-1 text-base text-gray-800"
-                  placeholder="Confirm password"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                  autoComplete="new-password"
-                />
-                <TouchableOpacity
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="p-1"
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff size={20} color="#6c757d" />
-                  ) : (
-                    <Eye size={20} color="#6c757d" />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                className={`bg-white rounded-xl py-4 items-center mt-4 ${loading ? 'opacity-70' : ''}`}
-                onPress={handleSignup}
-                disabled={loading}
-              >
-                <Text className="text-[#f093fb] text-lg font-semibold">
-                  {loading ? 'Creating Account...' : 'Create Account'}
-                </Text>
-              </TouchableOpacity>
-
-              <View className="flex-row justify-center items-center mt-6">
-                <Text className="text-white/80 text-base">Already have an account? </Text>
-                <Link href="/(auth)/login" asChild>
-                  <TouchableOpacity>
-                    <Text className="text-white text-base font-semibold">Sign In</Text>
+                <View style={styles.inputWrapper}>
+                  <Lock size={20} color="#6c757d" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.textInput, styles.passwordInput]}
+                    placeholder="Password"
+                    placeholderTextColor="#9ca3af"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoComplete="new-password"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeButton}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color="#6c757d" />
+                    ) : (
+                      <Eye size={20} color="#6c757d" />
+                    )}
                   </TouchableOpacity>
-                </Link>
+                </View>
+
+                <View style={styles.inputWrapper}>
+                  <Lock size={20} color="#6c757d" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.textInput, styles.passwordInput]}
+                    placeholder="Confirm password"
+                    placeholderTextColor="#9ca3af"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    autoComplete="new-password"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={styles.eyeButton}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff size={20} color="#6c757d" />
+                    ) : (
+                      <Eye size={20} color="#6c757d" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.signupButton, loading && styles.signupButtonDisabled]}
+                  onPress={handleSignup}
+                  disabled={loading}
+                >
+                  <Text style={styles.signupButtonText}>
+                    {loading ? 'Creating Account...' : 'Create Account'}
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.loginContainer}>
+                  <Text style={styles.loginText}>Already have an account? </Text>
+                  <Link href="/(auth)/login" asChild>
+                    <TouchableOpacity>
+                      <Text style={styles.loginLink}>Sign In</Text>
+                    </TouchableOpacity>
+                  </Link>
+                </View>
               </View>
-            </View>
-          </BlurView>
+            </BlurView>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </GradientBackground>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  formContainer: {
+    width: '100%',
+  },
+  blurContainer: {
+    borderRadius: 24,
+    padding: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.1,
+    shadowRadius: 40,
+    elevation: 20,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  inputContainer: {
+    gap: 16,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1f2937',
+    fontWeight: '500',
+  },
+  passwordInput: {
+    paddingRight: 40,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 16,
+    padding: 4,
+  },
+  signupButton: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  signupButtonDisabled: {
+    opacity: 0.7,
+  },
+  signupButtonText: {
+    color: '#f093fb',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  loginContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  loginText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 16,
+  },
+  loginLink: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

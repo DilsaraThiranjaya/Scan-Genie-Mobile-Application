@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  Animated,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
@@ -20,6 +22,24 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const { forgotPassword } = useAuth();
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handleResetPassword = async () => {
     if (!email) {
@@ -54,81 +74,223 @@ export default function ForgotPassword() {
   return (
     <GradientBackground colors={['#4facfe', '#00f2fe']}>
       <KeyboardAvoidingView
-        className="flex-1"
+        style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView contentContainerStyle={{ flex: 1, justifyContent: 'center', padding: 20 }}>
-          <BlurView className="rounded-2xl p-6 bg-white/10 border border-white/20 relative" intensity={20} tint="light">
-            <TouchableOpacity
-              className="absolute top-4 left-4 z-10 p-2"
-              onPress={() => router.back()}
-            >
-              <ArrowLeft size={24} color="white" />
-            </TouchableOpacity>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Animated.View
+            style={[
+              styles.formContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}
+          >
+            <BlurView style={styles.blurContainer} intensity={20} tint="light">
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+              >
+                <ArrowLeft size={24} color="white" />
+              </TouchableOpacity>
 
-            <View className="items-center mb-8 mt-8">
-              <Text className="text-3xl font-bold text-white mb-2">Forgot Password?</Text>
-              <Text className="text-base text-white/80 text-center leading-6">
-                {sent
-                  ? 'We\'ve sent a reset link to your email'
-                  : 'Enter your email to receive a reset link'}
-              </Text>
-            </View>
-
-            {!sent ? (
-              <View className="gap-4">
-                <View className="flex-row items-center bg-white/90 rounded-xl px-4 py-4">
-                  <Mail size={20} color="#6c757d" className="mr-3" />
-                  <TextInput
-                    className="flex-1 text-base text-gray-800"
-                    placeholder="Email address"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                  />
-                </View>
-
-                <TouchableOpacity
-                  className={`bg-white rounded-xl py-4 items-center mt-4 ${loading ? 'opacity-70' : ''}`}
-                  onPress={handleResetPassword}
-                  disabled={loading}
-                >
-                  <Text className="text-[#4facfe] text-lg font-semibold">
-                    {loading ? 'Sending...' : 'Send Reset Link'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View className="items-center gap-6">
-                <Text className="text-white/90 text-base text-center leading-6">
-                  If an account with that email exists, we've sent you a password reset link.
+              <View style={styles.header}>
+                <Text style={styles.title}>Forgot Password?</Text>
+                <Text style={styles.subtitle}>
+                  {sent
+                    ? 'We\'ve sent a reset link to your email'
+                    : 'Enter your email to receive a reset link'}
                 </Text>
-                
-                <TouchableOpacity
-                  className="py-3"
-                  onPress={handleResetPassword}
-                  disabled={loading}
-                >
-                  <Text className="text-white text-base font-semibold underline">
-                    Didn't receive it? Resend
-                  </Text>
-                </TouchableOpacity>
               </View>
-            )}
 
-            <View className="flex-row justify-center items-center mt-6">
-              <Text className="text-white/80 text-base">Remember your password? </Text>
-              <Link href="/(auth)/login" asChild>
-                <TouchableOpacity>
-                  <Text className="text-white text-base font-semibold">Sign In</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
-          </BlurView>
+              {!sent ? (
+                <View style={styles.inputContainer}>
+                  <View style={styles.inputWrapper}>
+                    <Mail size={20} color="#6c757d" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Email address"
+                      placeholderTextColor="#9ca3af"
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoComplete="email"
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.resetButton, loading && styles.resetButtonDisabled]}
+                    onPress={handleResetPassword}
+                    disabled={loading}
+                  >
+                    <Text style={styles.resetButtonText}>
+                      {loading ? 'Sending...' : 'Send Reset Link'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.successContainer}>
+                  <Text style={styles.successText}>
+                    If an account with that email exists, we've sent you a password reset link.
+                  </Text>
+                  
+                  <TouchableOpacity
+                    style={styles.resendButton}
+                    onPress={handleResetPassword}
+                    disabled={loading}
+                  >
+                    <Text style={styles.resendButtonText}>
+                      Didn't receive it? Resend
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={styles.loginContainer}>
+                <Text style={styles.loginText}>Remember your password? </Text>
+                <Link href="/(auth)/login" asChild>
+                  <TouchableOpacity>
+                    <Text style={styles.loginLink}>Sign In</Text>
+                  </TouchableOpacity>
+                </Link>
+              </View>
+            </BlurView>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </GradientBackground>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  formContainer: {
+    width: '100%',
+  },
+  blurContainer: {
+    borderRadius: 24,
+    padding: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.1,
+    shadowRadius: 40,
+    elevation: 20,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    zIndex: 10,
+    padding: 8,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+    marginTop: 32,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  inputContainer: {
+    gap: 16,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1f2937',
+    fontWeight: '500',
+  },
+  resetButton: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  resetButtonDisabled: {
+    opacity: 0.7,
+  },
+  resetButtonText: {
+    color: '#4facfe',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  successContainer: {
+    alignItems: 'center',
+    gap: 24,
+  },
+  successText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  resendButton: {
+    paddingVertical: 12,
+  },
+  resendButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  loginContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  loginText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 16,
+  },
+  loginLink: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   SafeAreaView,
   TouchableOpacity,
-  Alert,
   Platform,
   ScrollView,
+  StyleSheet,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
@@ -21,6 +23,8 @@ import { Camera, Image as ImageIcon, Scan, Sparkles, X, FlashlightOff as FlashOf
 import * as Haptics from 'expo-haptics';
 import Toast from 'react-native-toast-message';
 
+const { width } = Dimensions.get('window');
+
 export default function Home() {
   const { user } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
@@ -29,6 +33,31 @@ export default function Home() {
   const [flash, setFlash] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [aiProcessing, setAiProcessing] = useState(false);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 100,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handleBarcodeScanned = async ({ type, data }: { type: string; data: string }) => {
     if (scanning) return;
@@ -136,7 +165,6 @@ export default function Home() {
       const identification = await AIProductSearchService.identifyProductFromImage(imageUri);
       
       if (identification && identification.product_name) {
-        // Search Open Food Facts for the identified product
         const products = await OpenFoodFactsService.searchProductsByName(
           identification.product_name,
           identification.category
@@ -146,7 +174,6 @@ export default function Home() {
         if (products.length > 0) {
           finalProduct = products[0];
         } else {
-          // Create a basic product from AI identification
           finalProduct = {
             id: `ai_${Date.now()}`,
             barcode: `ai_${Date.now()}`,
@@ -208,9 +235,9 @@ export default function Home() {
 
   if (!permission) {
     return (
-      <LinearGradient colors={['#667eea', '#764ba2']} className="flex-1">
-        <SafeAreaView className="flex-1 justify-center items-center">
-          <Text className="text-white text-lg">Loading camera...</Text>
+      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
+        <SafeAreaView style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading camera...</Text>
         </SafeAreaView>
       </LinearGradient>
     );
@@ -218,20 +245,20 @@ export default function Home() {
 
   if (!permission.granted) {
     return (
-      <LinearGradient colors={['#667eea', '#764ba2']} className="flex-1">
-        <SafeAreaView className="flex-1 justify-center items-center px-8">
+      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
+        <SafeAreaView style={styles.permissionContainer}>
           <Camera size={64} color="rgba(255, 255, 255, 0.7)" />
-          <Text className="text-2xl font-bold text-white mt-6 mb-4 text-center">
+          <Text style={styles.permissionTitle}>
             Camera Permission Required
           </Text>
-          <Text className="text-base text-white/80 text-center mb-8 leading-6">
+          <Text style={styles.permissionSubtitle}>
             We need camera access to scan product barcodes and take photos for AI analysis
           </Text>
           <TouchableOpacity 
-            className="bg-white/20 border border-white/30 rounded-xl px-8 py-4"
+            style={styles.permissionButton}
             onPress={requestPermission}
           >
-            <Text className="text-white text-lg font-semibold">Grant Permission</Text>
+            <Text style={styles.permissionButtonText}>Grant Permission</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </LinearGradient>
@@ -240,56 +267,53 @@ export default function Home() {
 
   if (showCamera) {
     return (
-      <View className="flex-1">
+      <View style={styles.cameraContainer}>
         <CameraView 
-          className="flex-1" 
+          style={styles.camera} 
           facing={facing}
           onBarcodeScanned={handleBarcodeScanned}
           barcodeScannerSettings={{
             barcodeTypes: ['qr', 'pdf417', 'ean13', 'ean8', 'code128', 'code39'],
           }}
         >
-          <SafeAreaView className="flex-1">
-            {/* Header */}
-            <View className="flex-row justify-between items-center p-5">
+          <SafeAreaView style={styles.cameraOverlay}>
+            <View style={styles.cameraHeader}>
               <TouchableOpacity 
-                className="w-12 h-12 bg-black/50 rounded-full items-center justify-center"
+                style={styles.cameraButton}
                 onPress={() => setShowCamera(false)}
               >
                 <X size={24} color="white" />
               </TouchableOpacity>
               
-              <BlurView className="px-4 py-2 rounded-xl" intensity={20} tint="dark">
-                <Text className="text-white font-semibold">Scan Barcode</Text>
+              <BlurView style={styles.scanningLabel} intensity={20} tint="dark">
+                <Text style={styles.scanningLabelText}>Scan Barcode</Text>
               </BlurView>
 
-              <View className="w-12" />
+              <View style={styles.spacer} />
             </View>
 
-            {/* Scanning Area */}
-            <View className="flex-1 justify-center items-center">
-              <View className="w-64 h-64 border-2 border-white/50 rounded-2xl relative">
-                <View className="absolute -top-1 -left-1 w-8 h-8 border-l-4 border-t-4 border-white rounded-tl-xl" />
-                <View className="absolute -top-1 -right-1 w-8 h-8 border-r-4 border-t-4 border-white rounded-tr-xl" />
-                <View className="absolute -bottom-1 -left-1 w-8 h-8 border-l-4 border-b-4 border-white rounded-bl-xl" />
-                <View className="absolute -bottom-1 -right-1 w-8 h-8 border-r-4 border-b-4 border-white rounded-br-xl" />
+            <View style={styles.scanningArea}>
+              <View style={styles.scanningFrame}>
+                <View style={[styles.corner, styles.cornerTopLeft]} />
+                <View style={[styles.corner, styles.cornerTopRight]} />
+                <View style={[styles.corner, styles.cornerBottomLeft]} />
+                <View style={[styles.corner, styles.cornerBottomRight]} />
                 
                 {scanning && (
-                  <View className="absolute inset-0 bg-white/20 rounded-2xl items-center justify-center">
-                    <Text className="text-white font-semibold">Scanning...</Text>
+                  <View style={styles.scanningOverlay}>
+                    <Text style={styles.scanningText}>Scanning...</Text>
                   </View>
                 )}
               </View>
               
-              <Text className="text-white text-center mt-6 px-8 leading-6">
+              <Text style={styles.scanningInstructions}>
                 Position the barcode within the frame to scan
               </Text>
             </View>
 
-            {/* Controls */}
-            <View className="flex-row justify-center items-center p-8 gap-8">
+            <View style={styles.cameraControls}>
               <TouchableOpacity 
-                className="w-14 h-14 bg-black/50 rounded-full items-center justify-center"
+                style={styles.cameraControlButton}
                 onPress={toggleFlash}
               >
                 {flash ? (
@@ -300,7 +324,7 @@ export default function Home() {
               </TouchableOpacity>
 
               <TouchableOpacity 
-                className="w-14 h-14 bg-black/50 rounded-full items-center justify-center"
+                style={styles.cameraControlButton}
                 onPress={toggleCameraFacing}
               >
                 <RotateCcw size={24} color="white" />
@@ -313,136 +337,429 @@ export default function Home() {
   }
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2']} className="flex-1">
-      <SafeAreaView className="flex-1">
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          <View className="p-6">
-            {/* Header */}
-            <View className="items-center mb-8 mt-4">
-              <View className="w-16 h-16 bg-white/20 rounded-full items-center justify-center mb-4">
+    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <Animated.View
+            style={[
+              styles.content,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { translateY: slideAnim },
+                  { scale: scaleAnim }
+                ]
+              }
+            ]}
+          >
+            <View style={styles.header}>
+              <View style={styles.iconContainer}>
                 <Scan size={32} color="white" />
               </View>
-              <Text className="text-3xl font-bold text-white mb-2">AI Shopping Assistant</Text>
-              <Text className="text-base text-white/90 text-center leading-6">
+              <Text style={styles.title}>AI Shopping Assistant</Text>
+              <Text style={styles.subtitle}>
                 Scan products or take photos to get instant information and find cheaper alternatives
               </Text>
             </View>
 
-            {/* Main Actions */}
-            <View className="gap-4 mb-8">
-              {/* Barcode Scanner */}
+            <View style={styles.actionsContainer}>
               <TouchableOpacity 
-                className="bg-white/20 border border-white/30 rounded-2xl p-6 items-center"
+                style={styles.actionCard}
                 onPress={() => setShowCamera(true)}
                 disabled={scanning}
               >
-                <View className="w-16 h-16 bg-white/20 rounded-full items-center justify-center mb-4">
+                <View style={styles.actionIconContainer}>
                   <Camera size={28} color="white" />
                 </View>
-                <Text className="text-xl font-bold text-white mb-2">Scan Barcode</Text>
-                <Text className="text-sm text-white/80 text-center leading-5">
+                <Text style={styles.actionTitle}>Scan Barcode</Text>
+                <Text style={styles.actionDescription}>
                   Point your camera at any product barcode for instant information
                 </Text>
               </TouchableOpacity>
 
-              {/* AI Photo Scan */}
               <TouchableOpacity 
-                className="bg-white/20 border border-white/30 rounded-2xl p-6 items-center"
+                style={styles.actionCard}
                 onPress={handleTakePhoto}
                 disabled={aiProcessing}
               >
-                <View className="w-16 h-16 bg-white/20 rounded-full items-center justify-center mb-4">
+                <View style={styles.actionIconContainer}>
                   <Sparkles size={28} color="white" />
                 </View>
-                <Text className="text-xl font-bold text-white mb-2">
+                <Text style={styles.actionTitle}>
                   {aiProcessing ? 'AI Analyzing...' : 'AI Photo Scan'}
                 </Text>
-                <Text className="text-sm text-white/80 text-center leading-5">
+                <Text style={styles.actionDescription}>
                   Take a photo of any product - no barcode needed! AI will identify it
                 </Text>
               </TouchableOpacity>
 
-              {/* Upload Photo */}
               <TouchableOpacity 
-                className="bg-white/20 border border-white/30 rounded-2xl p-6 items-center"
+                style={styles.actionCard}
                 onPress={handleAIPhotoScan}
                 disabled={aiProcessing}
               >
-                <View className="w-16 h-16 bg-white/20 rounded-full items-center justify-center mb-4">
+                <View style={styles.actionIconContainer}>
                   <ImageIcon size={28} color="white" />
                 </View>
-                <Text className="text-xl font-bold text-white mb-2">Upload Photo</Text>
-                <Text className="text-sm text-white/80 text-center leading-5">
+                <Text style={styles.actionTitle}>Upload Photo</Text>
+                <Text style={styles.actionDescription}>
                   Select a photo from your gallery for AI analysis
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {/* Features */}
-            <BlurView className="rounded-2xl p-6 bg-white/10 border border-white/20" intensity={20} tint="light">
-              <Text className="text-lg font-bold text-white mb-4">✨ Smart Features</Text>
-              <View className="gap-3">
-                <View className="flex-row items-center">
-                  <View className="w-2 h-2 bg-white rounded-full mr-3" />
-                  <Text className="text-white/90 text-sm flex-1">
-                    Instant product recognition with AI
-                  </Text>
-                </View>
-                <View className="flex-row items-center">
-                  <View className="w-2 h-2 bg-white rounded-full mr-3" />
-                  <Text className="text-white/90 text-sm flex-1">
-                    Find cheaper alternatives automatically
-                  </Text>
-                </View>
-                <View className="flex-row items-center">
-                  <View className="w-2 h-2 bg-white rounded-full mr-3" />
-                  <Text className="text-white/90 text-sm flex-1">
-                    Nutrition information and health insights
-                  </Text>
-                </View>
-                <View className="flex-row items-center">
-                  <View className="w-2 h-2 bg-white rounded-full mr-3" />
-                  <Text className="text-white/90 text-sm flex-1">
-                    Save favorites and track your shopping
-                  </Text>
-                </View>
+            <BlurView style={styles.featuresCard} intensity={20} tint="light">
+              <Text style={styles.featuresTitle}>✨ Smart Features</Text>
+              <View style={styles.featuresList}>
+                {[
+                  'Instant product recognition with AI',
+                  'Find cheaper alternatives automatically',
+                  'Nutrition information and health insights',
+                  'Save favorites and track your shopping'
+                ].map((feature, index) => (
+                  <View key={index} style={styles.featureItem}>
+                    <View style={styles.featureBullet} />
+                    <Text style={styles.featureText}>{feature}</Text>
+                  </View>
+                ))}
               </View>
             </BlurView>
 
-            {/* Quick Stats */}
             {user && (
-              <View className="mt-6">
-                <Text className="text-lg font-bold text-white mb-4 text-center">
+              <View style={styles.userSection}>
+                <Text style={styles.welcomeText}>
                   Welcome back, {user.displayName || 'Shopper'}! 👋
                 </Text>
-                <View className="flex-row gap-4">
-                  <TouchableOpacity 
-                    className="flex-1 bg-white/10 rounded-xl p-4 items-center"
-                    onPress={() => router.push('/(tabs)/favorites')}
-                  >
-                    <Text className="text-2xl font-bold text-white">❤️</Text>
-                    <Text className="text-xs text-white/80 mt-1">Favorites</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    className="flex-1 bg-white/10 rounded-xl p-4 items-center"
-                    onPress={() => router.push('/(tabs)/analytics')}
-                  >
-                    <Text className="text-2xl font-bold text-white">📊</Text>
-                    <Text className="text-xs text-white/80 mt-1">Analytics</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    className="flex-1 bg-white/10 rounded-xl p-4 items-center"
-                    onPress={() => router.push('/(tabs)/suggestions')}
-                  >
-                    <Text className="text-2xl font-bold text-white">💡</Text>
-                    <Text className="text-xs text-white/80 mt-1">Suggestions</Text>
-                  </TouchableOpacity>
+                <View style={styles.quickStats}>
+                  {[
+                    { emoji: '❤️', label: 'Favorites', route: '/(tabs)/favorites' },
+                    { emoji: '📊', label: 'Analytics', route: '/(tabs)/analytics' },
+                    { emoji: '💡', label: 'Suggestions', route: '/(tabs)/suggestions' }
+                  ].map((stat, index) => (
+                    <TouchableOpacity 
+                      key={index}
+                      style={styles.statCard}
+                      onPress={() => router.push(stat.route as any)}
+                    >
+                      <Text style={styles.statEmoji}>{stat.emoji}</Text>
+                      <Text style={styles.statLabel}>{stat.label}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
             )}
-          </View>
+          </Animated.View>
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    padding: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '500',
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  permissionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginTop: 24,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  permissionSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  permissionButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+  },
+  permissionButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  cameraContainer: {
+    flex: 1,
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraOverlay: {
+    flex: 1,
+  },
+  cameraHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+  },
+  cameraButton: {
+    width: 48,
+    height: 48,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanningLabel: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  scanningLabelText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  spacer: {
+    width: 48,
+  },
+  scanningArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanningFrame: {
+    width: 256,
+    height: 256,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 24,
+    position: 'relative',
+  },
+  corner: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderColor: 'white',
+  },
+  cornerTopLeft: {
+    top: -4,
+    left: -4,
+    borderLeftWidth: 4,
+    borderTopWidth: 4,
+    borderTopLeftRadius: 16,
+  },
+  cornerTopRight: {
+    top: -4,
+    right: -4,
+    borderRightWidth: 4,
+    borderTopWidth: 4,
+    borderTopRightRadius: 16,
+  },
+  cornerBottomLeft: {
+    bottom: -4,
+    left: -4,
+    borderLeftWidth: 4,
+    borderBottomWidth: 4,
+    borderBottomLeftRadius: 16,
+  },
+  cornerBottomRight: {
+    bottom: -4,
+    right: -4,
+    borderRightWidth: 4,
+    borderBottomWidth: 4,
+    borderBottomRightRadius: 16,
+  },
+  scanningOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanningText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  scanningInstructions: {
+    color: 'white',
+    textAlign: 'center',
+    marginTop: 24,
+    paddingHorizontal: 32,
+    lineHeight: 24,
+  },
+  cameraControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    gap: 32,
+  },
+  cameraControlButton: {
+    width: 56,
+    height: 56,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+    marginTop: 16,
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  actionsContainer: {
+    gap: 16,
+    marginBottom: 32,
+  },
+  actionCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  actionIconContainer: {
+    width: 64,
+    height: 64,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  actionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  actionDescription: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  featuresCard: {
+    borderRadius: 24,
+    padding: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    marginBottom: 24,
+  },
+  featuresTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 16,
+  },
+  featuresList: {
+    gap: 12,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  featureBullet: {
+    width: 8,
+    height: 8,
+    backgroundColor: 'white',
+    borderRadius: 4,
+    marginRight: 12,
+  },
+  featureText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+    flex: 1,
+    lineHeight: 20,
+  },
+  userSection: {
+    marginTop: 24,
+  },
+  welcomeText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  quickStats: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+  },
+  statEmoji: {
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  statLabel: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+});

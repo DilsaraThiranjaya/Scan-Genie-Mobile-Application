@@ -1,30 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  SafeAreaView, 
-  ScrollView, 
-  TouchableOpacity, 
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  SafeAreaView,
+  ScrollView,
+  TouchableOpacity,
   RefreshControl,
-  Image 
-} from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { useAuth } from '@/context/AuthContext';
-import { AIProductSearchService } from '@/services/aiProductSearch';
-import { Product, AIAlternative } from '@/types';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { 
-  Lightbulb, 
-  TrendingDown, 
-  Leaf, 
-  Shield, 
+  StyleSheet,
+} from "react-native";
+import { useLocalSearchParams } from "expo-router";
+import { useAuth } from "@/context/AuthContext";
+import { AIProductSearchService } from "@/services/aiProductSearch";
+import { Product, AIAlternative } from "@/types";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import {
+  Lightbulb,
+  Leaf,
+  Shield,
   DollarSign,
   Star,
   MapPin,
-  Sparkles
-} from 'lucide-react-native';
-import Toast from 'react-native-toast-message';
+  Sparkles,
+} from "lucide-react-native";
+import Toast from "react-native-toast-message";
 
 export default function Suggestions() {
   const { productData, aiIdentified } = useLocalSearchParams();
@@ -38,13 +37,44 @@ export default function Suggestions() {
     if (productData) {
       try {
         const parsed = JSON.parse(productData as string);
-        setProduct(parsed);
-        loadAlternatives(parsed);
+        const normalized: Product = {
+          id: parsed.id ?? `local_${Date.now()}`,
+          barcode: parsed.barcode ?? parsed.id ?? undefined,
+          name: parsed.name ?? "Unknown Product",
+          brand: parsed.brand ?? undefined,
+          category: parsed.category ?? "Unknown",
+          imageUrl: parsed.imageUrl ?? undefined,
+          nutritionGrade: parsed.nutritionGrade ?? undefined,
+          ingredients: Array.isArray(parsed.ingredients)
+            ? parsed.ingredients
+            : parsed.ingredients
+            ? String(parsed.ingredients)
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : [],
+          allergens: Array.isArray(parsed.allergens)
+            ? parsed.allergens
+            : parsed.allergens
+            ? String(parsed.allergens)
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : [],
+          nutritionFacts: parsed.nutritionFacts ?? undefined,
+          scannedAt: parsed.scannedAt ? new Date(parsed.scannedAt) : new Date(),
+        };
+        setProduct(normalized);
+        loadAlternatives(normalized);
       } catch (error) {
-        console.error('Error parsing product data:', error);
+        console.error("Error parsing product data:", error);
+        Toast.show({
+          type: "error",
+          text1: "Invalid product data",
+          text2: "Could not load suggestions",
+        });
       }
     } else {
-      // Load default suggestions if no specific product
       loadDefaultSuggestions();
     }
   }, [productData]);
@@ -52,19 +82,50 @@ export default function Suggestions() {
   const loadAlternatives = async (productToAnalyze: Product) => {
     setLoading(true);
     try {
-      const aiAlternatives = await AIProductSearchService.getCheaperAlternatives(productToAnalyze);
-      setAlternatives(aiAlternatives);
-      
-      if (aiAlternatives.length > 0) {
+      if (!productToAnalyze) {
+        setAlternatives([]);
+        setLoading(false);
+        return;
+      }
+      const aiAlternatives =
+        await AIProductSearchService.getCheaperAlternatives(productToAnalyze);
+      const normalized = (aiAlternatives || []).map((alt) => ({
+        name: alt.name ?? "Unknown Alternative",
+        brand: alt.brand ?? undefined,
+        category: alt.category ?? productToAnalyze.category ?? "General",
+        estimated_price: alt.estimated_price ?? "$0.00",
+        original_price: alt.original_price ?? "$0.00",
+        savings_percentage:
+          typeof alt.savings_percentage === "number"
+            ? alt.savings_percentage
+            : 0,
+        reason: alt.reason ?? "",
+        key_features: Array.isArray(alt.key_features)
+          ? alt.key_features
+          : alt.key_features
+          ? String(alt.key_features)
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean)
+          : [],
+        where_to_find: alt.where_to_find ?? "Online",
+        confidence: typeof alt.confidence === "number" ? alt.confidence : 0,
+        alternative_type: alt.alternative_type ?? "budget",
+      })) as AIAlternative[];
+
+      setAlternatives(normalized);
+
+      if (normalized.length > 0) {
         Toast.show({
-          type: 'success',
-          text1: 'Alternatives Found!',
-          text2: `Found ${aiAlternatives.length} cheaper options`,
+          type: "success",
+          text1: "Alternatives Found!",
+          text2: `Found ${normalized.length} options`,
         });
+      } else {
+        setAlternatives(getFallbackAlternatives(productToAnalyze));
       }
     } catch (error) {
-      console.error('Error loading alternatives:', error);
-      // Load fallback alternatives
+      console.error("Error loading alternatives:", error);
       setAlternatives(getFallbackAlternatives(productToAnalyze));
     } finally {
       setLoading(false);
@@ -72,250 +133,234 @@ export default function Suggestions() {
   };
 
   const loadDefaultSuggestions = () => {
-    const defaultSuggestions: AIAlternative[] = [
+    setAlternatives([
       {
-        name: 'Organic Whole Grain Bread',
-        brand: 'Nature Valley',
-        category: 'Bakery',
-        estimated_price: '$3.49',
-        original_price: '$4.99',
+        name: "Organic Whole Grain Bread",
+        brand: "Nature Valley",
+        category: "Bakery",
+        estimated_price: "$3.49",
+        original_price: "$4.99",
         savings_percentage: 30,
-        reason: 'Higher fiber content and no preservatives',
-        key_features: ['Organic', 'Whole Grain', 'No Preservatives'],
-        where_to_find: 'Walmart, Target',
+        reason: "Higher fiber content and no preservatives",
+        key_features: ["Organic", "Whole Grain", "No Preservatives"],
+        where_to_find: "Walmart, Target",
         confidence: 0.85,
-        alternative_type: 'healthier'
+        alternative_type: "healthier",
       },
       {
-        name: 'Store Brand Greek Yogurt',
-        brand: 'Great Value',
-        category: 'Dairy',
-        estimated_price: '$2.99',
-        original_price: '$5.49',
+        name: "Store Brand Greek Yogurt",
+        brand: "Great Value",
+        category: "Dairy",
+        estimated_price: "$2.99",
+        original_price: "$5.49",
         savings_percentage: 45,
-        reason: 'Same nutritional value at lower cost',
-        key_features: ['High Protein', 'Probiotics', 'Low Sugar'],
-        where_to_find: 'Walmart',
+        reason: "Same nutritional value at lower cost",
+        key_features: ["High Protein", "Probiotics", "Low Sugar"],
+        where_to_find: "Walmart",
         confidence: 0.92,
-        alternative_type: 'budget'
+        alternative_type: "budget",
       },
-      {
-        name: 'Eco-Friendly Cleaning Spray',
-        brand: 'Seventh Generation',
-        category: 'Household',
-        estimated_price: '$4.29',
-        original_price: '$6.99',
-        savings_percentage: 39,
-        reason: 'Plant-based ingredients, better for environment',
-        key_features: ['Plant-Based', 'Biodegradable', 'Non-Toxic'],
-        where_to_find: 'Target, Amazon',
-        confidence: 0.78,
-        alternative_type: 'eco_friendly'
-      }
-    ];
-    setAlternatives(defaultSuggestions);
+    ]);
   };
 
   const getFallbackAlternatives = (product: Product): AIAlternative[] => {
-    const category = product.category?.toLowerCase() || 'food';
-    
-    if (category.includes('snack') || category.includes('food')) {
+    const category = (product.category ?? "food").toLowerCase();
+    if (category.includes("snack") || category.includes("food")) {
       return [
         {
           name: `Organic ${product.name}`,
-          brand: 'Store Brand',
-          category: product.category || 'Food',
-          estimated_price: '$2.99',
-          original_price: '$4.49',
+          brand: "Store Brand",
+          category: product.category ?? "Food",
+          estimated_price: "$2.99",
+          original_price: "$4.49",
           savings_percentage: 33,
-          reason: 'Organic alternative with better ingredients',
-          key_features: ['Organic', 'No Additives', 'Better Quality'],
-          where_to_find: 'Whole Foods, Target',
+          reason: "Organic alternative with better ingredients",
+          key_features: ["Organic", "No Additives", "Better Quality"],
+          where_to_find: "Whole Foods, Target",
           confidence: 0.75,
-          alternative_type: 'healthier'
+          alternative_type: "healthier",
         },
         {
           name: `Budget ${product.name}`,
-          brand: 'Generic Brand',
-          category: product.category || 'Food',
-          estimated_price: '$1.99',
-          original_price: '$4.49',
+          brand: "Generic Brand",
+          category: product.category ?? "Food",
+          estimated_price: "$1.99",
+          original_price: "$4.49",
           savings_percentage: 56,
-          reason: 'Same quality at lower price',
-          key_features: ['Same Ingredients', 'Lower Cost', 'Good Value'],
-          where_to_find: 'Walmart, Aldi',
+          reason: "Same quality at lower price",
+          key_features: ["Same Ingredients", "Lower Cost", "Good Value"],
+          where_to_find: "Walmart, Aldi",
           confidence: 0.88,
-          alternative_type: 'budget'
-        }
+          alternative_type: "budget",
+        },
       ];
     }
-    
     return [];
   };
 
   const handleRefresh = async () => {
-    if (product) {
-      setRefreshing(true);
-      await loadAlternatives(product);
-      setRefreshing(false);
+    if (!product) {
+      loadDefaultSuggestions();
+      return;
     }
+    setRefreshing(true);
+    await loadAlternatives(product);
+    setRefreshing(false);
   };
 
   const getAlternativeIcon = (type: string) => {
     switch (type) {
-      case 'budget': return DollarSign;
-      case 'healthier': return Leaf;
-      case 'eco_friendly': return Shield;
-      default: return Star;
+      case "budget":
+        return DollarSign;
+      case "healthier":
+        return Leaf;
+      case "eco_friendly":
+        return Shield;
+      default:
+        return Star;
     }
   };
 
   const getAlternativeColor = (savingsPercentage: number) => {
-    if (savingsPercentage >= 40) return '#22c55e'; // Green for high savings
-    if (savingsPercentage >= 20) return '#3b82f6'; // Blue for moderate savings
-    return '#8b5cf6'; // Purple for low savings
-  };
-
-  const getSavingsColor = (savingsPercentage: number) => {
-    if (savingsPercentage >= 40) return 'text-green-600 bg-green-50 border-green-200';
-    if (savingsPercentage >= 20) return 'text-blue-600 bg-blue-50 border-blue-200';
-    return 'text-purple-600 bg-purple-50 border-purple-200';
+    if (savingsPercentage >= 40) return "#22c55e";
+    if (savingsPercentage >= 20) return "#3b82f6";
+    return "#8b5cf6";
   };
 
   return (
-    <LinearGradient colors={['#43e97b', '#38f9d7']} className="flex-1">
-      <SafeAreaView className="flex-1">
-        <ScrollView 
-          className="flex-1" 
-          showsVerticalScrollIndicator={false}
+    <LinearGradient colors={["#43e97b", "#38f9d7"]} style={styles.flex}>
+      <SafeAreaView style={styles.flex}>
+        <ScrollView
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <View className="p-5">
+          <View style={styles.container}>
             {/* Header */}
-            <View className="items-center pt-4 pb-6">
-              <View className="w-16 h-16 bg-white/20 rounded-full items-center justify-center mb-4">
+            <View style={styles.header}>
+              <View style={styles.iconCircle}>
                 <Lightbulb size={32} color="white" />
               </View>
-              <Text className="text-3xl font-bold text-white mb-2">
-                {product ? 'Cheaper Alternatives' : 'Smart Suggestions'}
+              <Text style={styles.title}>
+                {product ? "Cheaper Alternatives" : "Smart Suggestions"}
               </Text>
-              <Text className="text-base text-white/90 text-center leading-6">
-                {product 
+              <Text style={styles.subtitle}>
+                {product
                   ? `AI-powered alternatives for ${product.name}`
-                  : 'Discover better products and save money'
-                }
+                  : "Discover better products and save money"}
               </Text>
-              {aiIdentified === 'true' && (
-                <BlurView className="mt-3 px-3 py-1 rounded-xl" intensity={20} tint="light">
-                  <View className="flex-row items-center gap-2">
+              {aiIdentified === "true" && (
+                <BlurView intensity={20} tint="light" style={styles.aiBadge}>
+                  <View style={styles.aiBadgeContent}>
                     <Sparkles size={16} color="white" />
-                    <Text className="text-white text-sm font-semibold">AI Powered</Text>
+                    <Text style={styles.aiBadgeText}>AI Powered</Text>
                   </View>
                 </BlurView>
               )}
             </View>
 
-            {/* Loading State */}
+            {/* Loading */}
             {loading && (
-              <BlurView className="rounded-2xl p-6 mb-4" intensity={20} tint="light">
-                <Text className="text-white text-center font-semibold">
+              <BlurView intensity={20} tint="light" style={styles.loadingBox}>
+                <Text style={styles.loadingText}>
                   🤖 AI is finding cheaper alternatives...
                 </Text>
               </BlurView>
             )}
 
-            {/* Alternatives List */}
-            <View className="gap-4">
+            {/* Alternatives list */}
+            <View style={styles.list}>
               {alternatives.map((alternative, index) => {
-                const IconComponent = getAlternativeIcon(alternative.alternative_type);
-                const iconColor = getAlternativeColor(alternative.savings_percentage);
-                const savingsColorClass = getSavingsColor(alternative.savings_percentage);
-                
+                const IconComponent = getAlternativeIcon(
+                  alternative.alternative_type
+                );
+                const iconColor = getAlternativeColor(
+                  alternative.savings_percentage
+                );
+
                 return (
-                  <TouchableOpacity key={index} className="bg-white rounded-2xl p-5 shadow-lg">
-                    {/* Header */}
-                    <View className="flex-row justify-between items-start mb-4">
-                      <View 
-                        className="w-12 h-12 rounded-full items-center justify-center"
-                        style={{ backgroundColor: iconColor }}
+                  <TouchableOpacity key={index} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <View
+                        style={[
+                          styles.cardIcon,
+                          { backgroundColor: iconColor },
+                        ]}
                       >
                         <IconComponent size={24} color="white" />
                       </View>
-                      <View className={`px-3 py-1 rounded-xl border ${savingsColorClass}`}>
-                        <Text className="text-xs font-bold">
+                      <View style={styles.discountBadge}>
+                        <Text style={styles.discountText}>
                           {alternative.savings_percentage}% OFF
                         </Text>
                       </View>
                     </View>
 
-                    {/* Product Info */}
-                    <Text className="text-lg font-bold text-gray-900 mb-1">
-                      {alternative.name}
+                    <Text style={styles.cardTitle}>{alternative.name}</Text>
+                    <Text style={styles.cardSubtitle}>
+                      {alternative.brand ?? "Unknown"} •{" "}
+                      {alternative.category ?? "General"}
                     </Text>
-                    <Text className="text-sm text-gray-600 mb-2">
-                      {alternative.brand} • {alternative.category}
-                    </Text>
-                    
-                    {/* Pricing */}
-                    <View className="flex-row items-center gap-3 mb-3">
-                      <Text className="text-xl font-bold text-green-600">
+
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceNew}>
                         {alternative.estimated_price}
                       </Text>
                       {alternative.original_price && (
-                        <Text className="text-sm text-gray-500 line-through">
+                        <Text style={styles.priceOld}>
                           {alternative.original_price}
                         </Text>
                       )}
-                      <Text className="text-sm font-semibold text-green-600">
-                        Save ${(parseFloat(alternative.original_price?.replace('$', '') || '0') - 
-                               parseFloat(alternative.estimated_price.replace('$', ''))).toFixed(2)}
-                      </Text>
                     </View>
 
-                    {/* Reason */}
-                    <Text className="text-sm text-gray-700 leading-5 mb-4">
-                      {alternative.reason}
-                    </Text>
+                    <Text style={styles.reason}>{alternative.reason}</Text>
 
-                    {/* Features */}
-                    <View className="flex-row flex-wrap gap-2 mb-4">
-                      {alternative.key_features.map((feature, featureIndex) => (
-                        <View key={featureIndex} className="bg-gray-100 px-2 py-1 rounded-lg">
-                          <Text className="text-xs text-gray-600 font-medium">
-                            {feature}
-                          </Text>
+                    <View style={styles.featureRow}>
+                      {(Array.isArray(alternative.key_features)
+                        ? alternative.key_features
+                        : []
+                      ).map((feature, i) => (
+                        <View key={i} style={styles.featureChip}>
+                          <Text style={styles.featureText}>{feature}</Text>
                         </View>
                       ))}
                     </View>
 
-                    {/* Where to Find */}
-                    <View className="flex-row items-center gap-2 mb-4">
+                    <View style={styles.locationRow}>
                       <MapPin size={16} color="#6b7280" />
-                      <Text className="text-sm text-gray-600">
+                      <Text style={styles.locationText}>
                         Available at: {alternative.where_to_find}
                       </Text>
                     </View>
 
-                    {/* Confidence */}
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center gap-2">
-                        <Text className="text-xs text-gray-500">AI Confidence:</Text>
-                        <View className="flex-row">
+                    <View style={styles.bottomRow}>
+                      <View style={styles.confidenceRow}>
+                        <Text style={styles.confidenceText}>
+                          AI Confidence:
+                        </Text>
+                        <View style={styles.starRow}>
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star
                               key={star}
                               size={12}
-                              color={star <= alternative.confidence * 5 ? '#fbbf24' : '#d1d5db'}
-                              fill={star <= alternative.confidence * 5 ? '#fbbf24' : 'none'}
+                              color={
+                                star <=
+                                Math.round((alternative.confidence ?? 0) * 5)
+                                  ? "#fbbf24"
+                                  : "#d1d5db"
+                              }
+                              fill={
+                                star <=
+                                Math.round((alternative.confidence ?? 0) * 5)
+                                  ? "#fbbf24"
+                                  : "none"
+                              }
                             />
                           ))}
                         </View>
                       </View>
-                      
-                      <TouchableOpacity className="bg-green-500 px-4 py-2 rounded-lg">
-                        <Text className="text-white text-sm font-semibold">Find Store</Text>
+                      <TouchableOpacity style={styles.findButton}>
+                        <Text style={styles.findButtonText}>Find Store</Text>
                       </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
@@ -323,55 +368,95 @@ export default function Suggestions() {
               })}
             </View>
 
-            {/* No Alternatives Message */}
             {!loading && alternatives.length === 0 && (
-              <BlurView className="rounded-2xl p-6 items-center" intensity={20} tint="light">
-                <Lightbulb size={48} color="rgba(255, 255, 255, 0.7)" />
-                <Text className="text-xl font-bold text-white mt-4 mb-2">
-                  No Alternatives Found
-                </Text>
-                <Text className="text-white/80 text-center leading-6">
-                  {product 
-                    ? 'Try scanning another product or check back later for new suggestions'
-                    : 'Start scanning products to get personalized suggestions'
-                  }
+              <BlurView intensity={20} tint="light" style={styles.emptyBox}>
+                <Lightbulb size={48} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.emptyTitle}>No Alternatives Found</Text>
+                <Text style={styles.emptyText}>
+                  {product
+                    ? "Try scanning another product or check back later for new suggestions"
+                    : "Start scanning products to get personalized suggestions"}
                 </Text>
               </BlurView>
             )}
-
-            {/* Smart Shopping Tips */}
-            <BlurView className="rounded-2xl p-5 mt-6" intensity={20} tint="light">
-              <Text className="text-lg font-bold text-white mb-4">💡 Smart Shopping Tips</Text>
-              <View className="gap-3">
-                <View className="flex-row items-start gap-3">
-                  <Text className="text-white text-lg">🏷️</Text>
-                  <Text className="text-white/90 text-sm leading-5 flex-1">
-                    Compare unit prices, not just package prices
-                  </Text>
-                </View>
-                <View className="flex-row items-start gap-3">
-                  <Text className="text-white text-lg">🛒</Text>
-                  <Text className="text-white/90 text-sm leading-5 flex-1">
-                    Store brands often offer 20-40% savings
-                  </Text>
-                </View>
-                <View className="flex-row items-start gap-3">
-                  <Text className="text-white text-lg">📱</Text>
-                  <Text className="text-white/90 text-sm leading-5 flex-1">
-                    Use this app to scan before buying anything
-                  </Text>
-                </View>
-                <View className="flex-row items-start gap-3">
-                  <Text className="text-white text-lg">🌱</Text>
-                  <Text className="text-white/90 text-sm leading-5 flex-1">
-                    Organic doesn't always mean healthier - check nutrition facts
-                  </Text>
-                </View>
-              </View>
-            </BlurView>
           </View>
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  container: { padding: 20 },
+  header: { alignItems: "center", paddingTop: 16, paddingBottom: 24 },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  title: { fontSize: 24, fontWeight: "bold", color: "#fff", marginBottom: 8 },
+  subtitle: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.9)",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  aiBadge: { marginTop: 12, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  aiBadgeContent: { flexDirection: "row", alignItems: "center" },
+  aiBadgeText: { color: "#fff", fontSize: 12, fontWeight: "600", marginLeft: 6 },
+  loadingBox: { borderRadius: 16, padding: 24, marginBottom: 16 },
+  loadingText: { color: "#fff", textAlign: "center", fontWeight: "600" },
+  list: { gap: 16 },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    marginBottom: 16,
+  },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16 },
+  cardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  discountBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#22c55e",
+    backgroundColor: "#dcfce7",
+  },
+  discountText: { fontSize: 12, fontWeight: "700", color: "#22c55e" },
+  cardTitle: { fontSize: 18, fontWeight: "bold", color: "#111827", marginBottom: 4 },
+  cardSubtitle: { fontSize: 14, color: "#6b7280", marginBottom: 8 },
+  priceRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  priceNew: { fontSize: 20, fontWeight: "bold", color: "#16a34a", marginRight: 8 },
+  priceOld: { fontSize: 14, color: "#9ca3af", textDecorationLine: "line-through" },
+  reason: { fontSize: 14, color: "#374151", marginBottom: 8 },
+  featureRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: 8 },
+  featureChip: { backgroundColor: "#f3f4f6", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginRight: 6, marginBottom: 6 },
+  featureText: { fontSize: 12, color: "#4b5563", fontWeight: "500" },
+  locationRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  locationText: { fontSize: 14, color: "#6b7280", marginLeft: 6 },
+  bottomRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  confidenceRow: { flexDirection: "row", alignItems: "center" },
+  confidenceText: { fontSize: 12, color: "#6b7280", marginRight: 6 },
+  starRow: { flexDirection: "row" },
+  findButton: { backgroundColor: "#22c55e", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  findButtonText: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  emptyBox: { borderRadius: 16, padding: 24, alignItems: "center" },
+  emptyTitle: { fontSize: 20, fontWeight: "bold", color: "#fff", marginTop: 16, marginBottom: 8 },
+  emptyText: { color: "rgba(255,255,255,0.8)", textAlign: "center", lineHeight: 20 },
+});

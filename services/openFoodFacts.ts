@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Product } from '@/types';
 
-const BASE_URL = 'https://world.openfoodfacts.org/api/v0';
+const BASE_URL = 'https://world.openfoodfacts.org';
 
 export interface OpenFoodFactsProduct {
   code: string;
@@ -25,46 +25,56 @@ export interface OpenFoodFactsProduct {
 }
 
 export const OpenFoodFactsService = {
-  // New: Search products by name and category (for AI-identified products)
+  // Search products by name (AI identified name or direct query)
   async searchProductsByName(productName: string, category?: string): Promise<Product[]> {
     try {
-      const searchQuery = category ? `${productName} ${category}` : productName;
+      const cleanProductName = String(productName || '').toLowerCase().trim();
+
+      const isFruitOrVeg = !!(
+        category?.toLowerCase().includes('fruit') ||
+        category?.toLowerCase().includes('vegetable') ||
+        ['banana', 'apple', 'orange', 'tomato', 'carrot'].some(item =>
+          cleanProductName.includes(item)
+        )
+      );
+
+      const searchQuery = isFruitOrVeg ? cleanProductName :
+        (category ? `${cleanProductName} ${category}` : cleanProductName);
+
       const response = await axios.get(`${BASE_URL}/cgi/search.pl`, {
         params: {
           search_terms: searchQuery,
           search_simple: 1,
           action: 'process',
           json: 1,
-          page_size: 10,
-        }
+          page_size: 20,
+          fields: 'code,product_name,brands,categories,image_url,nutrition_grades,ingredients_text,allergens,nutriments'
+        },
+        timeout: 15000
       });
 
-      if (!response.data.products || response.data.products.length === 0) {
-        return [];
+      // Defensive: ensure shape
+      const products = Array.isArray(response.data?.products) ? response.data.products : [];
+
+      if (products.length === 0) {
+        // Broader fallback search
+        const broaderResponse = await axios.get(`${BASE_URL}/cgi/search.pl`, {
+          params: {
+            search_terms: cleanProductName.split(' ')[0] || cleanProductName,
+            search_simple: 1,
+            action: 'process',
+            json: 1,
+            page_size: 10,
+            fields: 'code,product_name,brands,categories,image_url,nutrition_grades,ingredients_text,allergens,nutriments'
+          },
+          timeout: 10000
+        });
+
+        const broader = Array.isArray(broaderResponse.data?.products) ? broaderResponse.data.products : [];
+        return broader.slice(0, 3).map(toProductMapper(productName, category));
       }
 
-      return response.data.products.map((apiProduct: OpenFoodFactsProduct) => ({
-        id: apiProduct.code,
-        barcode: apiProduct.code,
-        name: apiProduct.product_name || 'Unknown Product',
-        brand: apiProduct.brands?.split(',')[0]?.trim(),
-        category: apiProduct.categories?.split(',')[0]?.trim(),
-        imageUrl: apiProduct.image_url,
-        nutritionGrade: apiProduct.nutrition_grades,
-        ingredients: apiProduct.ingredients_text?.split(',').map(i => i.trim()),
-        allergens: apiProduct.allergens?.split(',').map(a => a.trim()),
-        nutritionFacts: apiProduct.nutriments ? {
-          energy: apiProduct.nutriments.energy_100g,
-          fat: apiProduct.nutriments.fat_100g,
-          saturatedFat: apiProduct.nutriments['saturated-fat_100g'],
-          carbohydrates: apiProduct.nutriments.carbohydrates_100g,
-          sugars: apiProduct.nutriments.sugars_100g,
-          fiber: apiProduct.nutriments.fiber_100g,
-          proteins: apiProduct.nutriments.proteins_100g,
-          salt: apiProduct.nutriments.salt_100g,
-        } : undefined,
-        scannedAt: new Date(),
-      }));
+      return products.map(toProductMapper(productName, category));
     } catch (error) {
       console.error('Error searching products:', error);
       return [];
@@ -73,41 +83,53 @@ export const OpenFoodFactsService = {
 
   async getProductByBarcode(barcode: string): Promise<Product | null> {
     try {
-      const response = await axios.get(`${BASE_URL}/product/${barcode}.json`);
-      
-      if (response.data.status === 0) {
+      const response = await axios.get(`${BASE_URL}/product/${barcode}.json`, { timeout: 10000 });
+
+      if (response.data?.status === 0) {
         return null;
       }
 
       const apiProduct: OpenFoodFactsProduct = response.data.product;
-      
-      const product: Product = {
-        id: apiProduct.code,
-        barcode: apiProduct.code,
-        name: apiProduct.product_name || 'Unknown Product',
-        brand: apiProduct.brands?.split(',')[0]?.trim(),
-        category: apiProduct.categories?.split(',')[0]?.trim(),
-        imageUrl: apiProduct.image_url,
-        nutritionGrade: apiProduct.nutrition_grades,
-        ingredients: apiProduct.ingredients_text?.split(',').map(i => i.trim()),
-        allergens: apiProduct.allergens?.split(',').map(a => a.trim()),
-        nutritionFacts: apiProduct.nutriments ? {
-          energy: apiProduct.nutriments.energy_100g,
-          fat: apiProduct.nutriments.fat_100g,
-          saturatedFat: apiProduct.nutriments['saturated-fat_100g'],
-          carbohydrates: apiProduct.nutriments.carbohydrates_100g,
-          sugars: apiProduct.nutriments.sugars_100g,
-          fiber: apiProduct.nutriments.fiber_100g,
-          proteins: apiProduct.nutriments.proteins_100g,
-          salt: apiProduct.nutriments.salt_100g,
-        } : undefined,
-        scannedAt: new Date(),
-      };
-
-      return product;
+      return toProductMapper(undefined, undefined)(apiProduct);
     } catch (error) {
-      console.error('Error fetching product:', error);
+      console.error('Error fetching product by barcode:', error);
       return null;
     }
   },
 };
+
+// Helper: returns mapper function for an API product into your Product type
+function toProductMapper(fallbackName?: string, fallbackCategory?: string) {
+  return (apiProduct: OpenFoodFactsProduct): Product => {
+    const now = new Date();
+
+    // safe parsing helpers
+    const splitToArray = (val?: string) =>
+      val ? String(val).split(',').map(s => s.trim()).filter(Boolean) : [];
+
+    const nutriments = apiProduct.nutriments || {};
+
+    return {
+      id: apiProduct.code || `search_${Date.now()}`,
+      barcode: apiProduct.code || `search_${Date.now()}`,
+      name: apiProduct.product_name || fallbackName || 'Unknown Product',
+      brand: apiProduct.brands ? String(apiProduct.brands).split(',')[0].trim() : undefined,
+      category: fallbackCategory || (apiProduct.categories ? String(apiProduct.categories).split(',')[0].trim() : 'Unknown'),
+      imageUrl: apiProduct.image_url,
+      nutritionGrade: apiProduct.nutrition_grades,
+      ingredients: splitToArray(apiProduct.ingredients_text),
+      allergens: splitToArray(apiProduct.allergens),
+      nutritionFacts: {
+        energy: nutriments.energy_100g ?? null,
+        fat: nutriments.fat_100g ?? null,
+        saturatedFat: nutriments['saturated-fat_100g'] ?? null,
+        carbohydrates: nutriments.carbohydrates_100g ?? null,
+        sugars: nutriments.sugars_100g ?? null,
+        fiber: nutriments.fiber_100g ?? null,
+        proteins: nutriments.proteins_100g ?? null,
+        salt: nutriments.salt_100g ?? null,
+      },
+      scannedAt: now,
+    };
+  };
+}

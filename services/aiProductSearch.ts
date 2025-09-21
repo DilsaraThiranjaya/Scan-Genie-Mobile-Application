@@ -1,19 +1,18 @@
 import axios from 'axios';
+import Constants from 'expo-constants';
 import { AIProductIdentification, AIAlternative, Product } from '@/types';
+import 'react-native-url-polyfill/auto';
 
-// Free Google Gemini API configuration - Get your key from https://makersuite.google.com/app/apikey
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || 'AIzaSyARDQqqBL4zU1tE_ixrjluuK2sxlk6urL4';
+// Free Google Gemini API configuration (your config uses env or Constants)
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || Constants.expoConfig?.extra?.geminiApiKey || 'AIzaSyARDQqqBL4zU1tE_ixrjluuK2sxlk6urL4';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
 
-// Rate limiting to respect free tier limits (60 requests/minute)
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 1000; // 1 second between requests
+const MIN_REQUEST_INTERVAL = 1000;
 
 export const AIProductSearchService = {
-  // Identify product from image using AI
   async identifyProductFromImage(imageUri: string): Promise<AIProductIdentification | null> {
     try {
-      // Rate limiting - respect free tier limits
       const now = Date.now();
       const timeSinceLastRequest = now - lastRequestTime;
       if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
@@ -21,14 +20,13 @@ export const AIProductSearchService = {
       }
       lastRequestTime = Date.now();
 
-      // Validate API key
       if (!GEMINI_API_KEY) {
-        throw new Error('Gemini API key not configured. Please set EXPO_PUBLIC_GEMINI_API_KEY in your environment variables.');
+        console.warn('Gemini API key not configured.');
+        return null;
       }
 
-      // Convert image to base64
       const base64Image = await this.convertImageToBase64(imageUri);
-      
+
       const prompt = `
         Analyze this product image and identify the product. Return ONLY a JSON object with this exact structure:
         {
@@ -40,15 +38,12 @@ export const AIProductSearchService = {
           "estimated_price_range": "$2.99 - $4.99",
           "key_features": ["feature1", "feature2", "feature3"]
         }
-        
         If you cannot clearly identify the product, return:
         {
           "product_name": null,
           "confidence": 0.0,
           "error": "Could not identify product from image"
         }
-        
-        Be specific with product names and brands. Focus on food and consumer products.
       `;
 
       const response = await axios.post(
@@ -67,47 +62,38 @@ export const AIProductSearchService = {
           }]
         },
         {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 30000, // 30 seconds timeout
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 30000
         }
       );
 
       const aiResponse = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!aiResponse) {
-        throw new Error('No response from AI');
-      }
+      if (!aiResponse) return null;
 
-      // Parse JSON response
-      const cleanResponse = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
-      const identification = JSON.parse(cleanResponse);
+      const cleanResponse = aiResponse
+        .replace(/```json\n?/g, '')
+        .replace(/\n?```/g, '')
+        .replace(/```/g, '')
+        .trim();
 
-      if (identification.confidence < 0.5) {
+      try {
+        const identification = JSON.parse(cleanResponse);
+        if (typeof identification?.confidence === 'number' && identification.confidence >= 0.0) {
+          return identification;
+        }
+        return null;
+      } catch (e) {
+        console.error('Failed to parse AI response JSON', e, cleanResponse);
         return null;
       }
-
-      return identification;
     } catch (error) {
       console.error('Error identifying product from image:', error);
-      
-      // Handle specific API errors
-      if (error.response?.status === 400) {
-        console.error('Invalid API request. Check your API key and request format.');
-      } else if (error.response?.status === 429) {
-        console.error('Rate limit exceeded. Please wait before making another request.');
-      } else if (error.response?.status === 403) {
-        console.error('API key invalid or insufficient permissions.');
-      }
-      
       return null;
     }
   },
 
-  // Get cheaper alternatives using AI
   async getCheaperAlternatives(product: Product): Promise<AIAlternative[]> {
     try {
-      // Rate limiting
       const now = Date.now();
       const timeSinceLastRequest = now - lastRequestTime;
       if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
@@ -115,82 +101,66 @@ export const AIProductSearchService = {
       }
       lastRequestTime = Date.now();
 
-      // Validate API key
       if (!GEMINI_API_KEY) {
-        console.warn('Gemini API key not configured. Using fallback alternatives.');
+        console.warn('Gemini API key not configured. Using fallback.');
         return this.getFallbackAlternatives(product);
       }
 
       const prompt = `
         Find 3-5 cheaper alternatives for this product: "${product.name}" by ${product.brand || 'Unknown Brand'} in category "${product.category || 'General'}".
-        
-        Return ONLY a JSON array with this exact structure:
+        Return ONLY a JSON array with objects like:
         [
           {
-            "name": "Alternative Product Name",
-            "brand": "Brand Name",
-            "category": "${product.category || 'General'}",
-            "estimated_price": "$2.99",
-            "original_price": "$4.99",
-            "savings_percentage": 40,
-            "reason": "Why this is a better choice (price, quality, health)",
-            "key_features": ["feature1", "feature2", "feature3"],
-            "where_to_find": "Walmart, Target, Amazon",
-            "confidence": 0.85,
-            "alternative_type": "budget"
+            "name":"Alternative Product",
+            "brand":"Brand",
+            "category":"${product.category || 'General'}",
+            "estimated_price":"$2.99",
+            "original_price":"$4.99",
+            "savings_percentage":40,
+            "reason":"why",
+            "key_features":["f1","f2"],
+            "where_to_find":"Walmart, Amazon",
+            "confidence":0.85,
+            "alternative_type":"budget"
           }
         ]
-        
-        Alternative types: "budget" (cheaper), "healthier" (better nutrition), "eco_friendly" (sustainable)
-        Focus on real products that are commonly available in US stores.
-        Ensure savings_percentage is realistic (10-60%).
-        Make prices realistic for the product category.
       `;
 
       const response = await axios.post(
         `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-        {
-          contents: [{
-            parts: [{ text: prompt }]
-          }]
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 30000,
-        }
+        { contents: [{ parts: [{ text: prompt }] }] },
+        { headers: { 'Content-Type': 'application/json' }, timeout: 30000 }
       );
 
       const aiResponse = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!aiResponse) {
-        throw new Error('No response from AI');
+      if (!aiResponse) throw new Error('No AI response');
+
+      const cleanResponse = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
+      let alternatives;
+      try {
+        alternatives = JSON.parse(cleanResponse);
+      } catch (e) {
+        console.error('Failed to parse AI alternatives JSON', e, cleanResponse);
+        return this.getFallbackAlternatives(product);
       }
 
-      // Parse JSON response
-      const cleanResponse = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
-      const alternatives = JSON.parse(cleanResponse);
+      const validAlternatives = Array.isArray(alternatives)
+        ? alternatives.filter((alt: any) => alt.name && alt.estimated_price)
+        : [];
 
-      // Validate and filter alternatives
-      const validAlternatives = alternatives.filter((alt: any) => 
-        alt.name && alt.estimated_price && alt.confidence > 0.5
-      );
-
-      return validAlternatives.length > 0 ? validAlternatives : this.getFallbackAlternatives(product);
+      return validAlternatives.length ? validAlternatives : this.getFallbackAlternatives(product);
     } catch (error) {
       console.error('Error getting AI alternatives:', error);
       return this.getFallbackAlternatives(product);
     }
   },
 
-  // Fallback alternatives when AI is not available
   getFallbackAlternatives(product: Product): AIAlternative[] {
     const category = product.category?.toLowerCase() || 'general';
     const basePrice = this.estimateProductPrice(product);
-    
+
     const alternatives: AIAlternative[] = [];
-    
-    // Budget alternative
+
     alternatives.push({
       name: `Store Brand ${product.name.replace(product.brand || '', '').trim()}`,
       brand: 'Generic Brand',
@@ -205,7 +175,6 @@ export const AIProductSearchService = {
       alternative_type: 'budget'
     });
 
-    // Healthier alternative (if food category)
     if (category.includes('food') || category.includes('snack') || category.includes('dairy')) {
       alternatives.push({
         name: `Organic ${product.name}`,
@@ -222,7 +191,6 @@ export const AIProductSearchService = {
       });
     }
 
-    // Eco-friendly alternative
     alternatives.push({
       name: `Eco-Friendly ${product.name}`,
       brand: 'Green Brand',
@@ -230,7 +198,7 @@ export const AIProductSearchService = {
       estimated_price: `$${(basePrice * 0.85).toFixed(2)}`,
       original_price: `$${basePrice.toFixed(2)}`,
       savings_percentage: 15,
-      reason: 'Sustainable packaging and environmentally friendly production',
+      reason: 'Sustainable packaging',
       key_features: ['Eco-Friendly', 'Sustainable', 'Recyclable Packaging'],
       where_to_find: 'Target, Amazon, Local Stores',
       confidence: 0.72,
@@ -240,10 +208,8 @@ export const AIProductSearchService = {
     return alternatives;
   },
 
-  // Estimate product price based on category
   estimateProductPrice(product: Product): number {
     const category = product.category?.toLowerCase() || 'general';
-    
     if (category.includes('snack')) return 3.99;
     if (category.includes('beverage') || category.includes('drink')) return 2.49;
     if (category.includes('dairy')) return 4.99;
@@ -252,17 +218,14 @@ export const AIProductSearchService = {
     if (category.includes('frozen')) return 5.99;
     if (category.includes('cereal')) return 4.49;
     if (category.includes('sauce') || category.includes('condiment')) return 2.99;
-    
-    return 4.99; // Default price
+    return 4.99;
   },
 
-  // Convert image URI to base64
   async convertImageToBase64(imageUri: string): Promise<string> {
     try {
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      
-      return new Promise((resolve, reject) => {
+      return await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64 = (reader.result as string).split(',')[1];
@@ -275,5 +238,5 @@ export const AIProductSearchService = {
       console.error('Error converting image to base64:', error);
       throw error;
     }
-  },
+  }
 };

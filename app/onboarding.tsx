@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,7 +6,8 @@ import {
   TouchableOpacity, 
   StyleSheet,
   ScrollView,
-  Platform 
+  Platform,
+  Animated,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,6 +47,24 @@ const onboardingSteps = [
 export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 100,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handleNext = async () => {
     if (Platform.OS !== 'web') {
@@ -82,47 +101,56 @@ export default function Onboarding() {
 
   return (
     <GradientBackground colors={onboardingSteps[currentStep].colors}>
-      <View className="flex-1 pt-16">
-        <TouchableOpacity className="absolute top-16 right-5 z-10 px-4 py-2" onPress={handleSkip}>
-          <Text className="text-white text-base font-medium">Skip</Text>
+      <View style={styles.container}>
+        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+          <Text style={styles.skipButtonText}>Skip</Text>
         </TouchableOpacity>
 
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleScroll}
-          className="flex-1"
+        <Animated.View
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }]
+            }
+          ]}
         >
-          {onboardingSteps.map((step, index) => (
-            <View key={index} style={{ width }} className="flex-1 justify-center items-center px-10">
-              <View className="mb-10">
-                <step.icon size={120} color="white" strokeWidth={1.5} />
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleScroll}
+            style={styles.scrollView}
+          >
+            {onboardingSteps.map((step, index) => (
+              <View key={index} style={[styles.stepContainer, { width }]}>
+                <View style={styles.iconContainer}>
+                  <step.icon size={120} color="white" strokeWidth={1.5} />
+                </View>
+                
+                <Text style={styles.title}>{step.title}</Text>
+                <Text style={styles.description}>{step.description}</Text>
               </View>
-              
-              <Text className="text-4xl font-bold text-white text-center mb-5">{step.title}</Text>
-              <Text className="text-lg text-white/90 text-center leading-7">{step.description}</Text>
-            </View>
-          ))}
-        </ScrollView>
+            ))}
+          </ScrollView>
+        </Animated.View>
 
-        <View className="px-10 pb-10">
-          <View className="flex-row justify-center mb-8">
+        <View style={styles.footer}>
+          <View style={styles.pagination}>
             {onboardingSteps.map((_, index) => (
               <View
                 key={index}
-                className={`h-2 rounded-full mx-1 ${
-                  index === currentStep 
-                    ? 'w-5 bg-white' 
-                    : 'w-2 bg-white/50'
-                }`}
+                style={[
+                  styles.paginationDot,
+                  index === currentStep ? styles.paginationDotActive : styles.paginationDotInactive
+                ]}
               />
             ))}
           </View>
 
-          <TouchableOpacity className="bg-white/20 rounded-3xl py-4 items-center border border-white/30" onPress={handleNext}>
-            <Text className="text-white text-lg font-semibold">
+          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+            <Text style={styles.nextButtonText}>
               {currentStep === onboardingSteps.length - 1 ? 'Get Started' : 'Next'}
             </Text>
           </TouchableOpacity>
@@ -132,5 +160,101 @@ export default function Onboarding() {
   );
 }
 
-// Keep minimal styles for complex layouts
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 64,
+  },
+  skipButton: {
+    position: 'absolute',
+    top: 64,
+    right: 20,
+    zIndex: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  skipButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  content: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  stepContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  iconContainer: {
+    marginBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  description: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 28,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  footer: {
+    paddingHorizontal: 40,
+    paddingBottom: 40,
+  },
+  pagination: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 32,
+  },
+  paginationDot: {
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 4,
+  },
+  paginationDotActive: {
+    width: 20,
+    backgroundColor: 'white',
+  },
+  paginationDotInactive: {
+    width: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  nextButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 24,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  nextButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+});

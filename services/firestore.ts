@@ -15,13 +15,14 @@ import { Product, UserFavorite, ScanHistory, UserAnalytics } from '@/types';
 
 export const FirestoreService = {
   // Favorites
-  async addFavorite(userId: string, product: Product): Promise<void> {
+  async addFavorite(userId: string, product: Product): Promise<string> {
     const favoritesRef = collection(db, 'favorites');
-    await addDoc(favoritesRef, {
+    const docRef = await addDoc(favoritesRef, {
       userId,
       product,
       addedAt: Timestamp.now(),
     });
+    return docRef.id;
   },
 
   async removeFavorite(favoriteId: string): Promise<void> {
@@ -37,22 +38,27 @@ export const FirestoreService = {
       orderBy('addedAt', 'desc')
     );
     const snapshot = await getDocs(q);
-    
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      addedAt: doc.data().addedAt.toDate(),
-    })) as UserFavorite[];
+
+    return snapshot.docs.map(d => {
+      const data: any = d.data();
+      return {
+        id: d.id,
+        userId: data.userId,
+        product: data.product,
+        addedAt: data.addedAt ? data.addedAt.toDate() : new Date()
+      } as UserFavorite;
+    });
   },
 
   // Scan History
-  async addScanToHistory(userId: string, product: Product): Promise<void> {
+  async addScanToHistory(userId: string, product: Product): Promise<string> {
     const scansRef = collection(db, 'scans');
-    await addDoc(scansRef, {
+    const docRef = await addDoc(scansRef, {
       userId,
       product,
       scannedAt: Timestamp.now(),
     });
+    return docRef.id;
   },
 
   async getScanHistory(userId: string, limitCount: number = 50): Promise<ScanHistory[]> {
@@ -64,12 +70,16 @@ export const FirestoreService = {
       limit(limitCount)
     );
     const snapshot = await getDocs(q);
-    
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      scannedAt: doc.data().scannedAt.toDate(),
-    })) as ScanHistory[];
+
+    return snapshot.docs.map(d => {
+      const data: any = d.data();
+      return {
+        id: d.id,
+        userId: data.userId,
+        product: data.product,
+        scannedAt: data.scannedAt ? data.scannedAt.toDate() : new Date()
+      } as ScanHistory;
+    });
   },
 
   // Analytics
@@ -82,21 +92,20 @@ export const FirestoreService = {
       getDocs(query(favoritesRef, where('userId', '==', userId)))
     ]);
 
-    const scans = scansSnapshot.docs.map(doc => doc.data());
+    const scans = scansSnapshot.docs.map(d => d.data());
     const totalScans = scans.length;
     const favoriteCount = favoritesSnapshot.size;
 
-    // Calculate categories scanned
     const categoriesScanned: { [key: string]: number } = {};
-    scans.forEach(scan => {
-      const category = scan.product.category || 'Unknown';
+    scans.forEach((scan: any) => {
+      const category = (scan.product?.category) || 'Unknown';
       categoriesScanned[category] = (categoriesScanned[category] || 0) + 1;
     });
 
-    // Calculate monthly scans
     const monthlyScans: { [key: string]: number } = {};
-    scans.forEach(scan => {
-      const date = scan.scannedAt.toDate();
+    scans.forEach((scan: any) => {
+      const ts = scan.scannedAt;
+      const date = ts?.toDate ? ts.toDate() : (ts ? new Date(ts) : new Date());
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       monthlyScans[monthKey] = (monthlyScans[monthKey] || 0) + 1;
     });
