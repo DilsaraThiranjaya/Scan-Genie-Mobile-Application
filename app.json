@@ -66,8 +66,7 @@
         {
           "photosPermission": "Scan Genie needs access to your photos to identify products using AI analysis."
         }
-      ],
-      "expo-barcode-scanner"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
